@@ -1,0 +1,18 @@
+{
+    "server": {
+        "host": "0.0.0.0",
+        "port": 18765,
+        "token": "CHANGE_THIS_TO_YOUR_SECURE_TOKEN",
+        "hmac_secret": "CHANGE_THIS_TO_YOUR_HMAC_SECRET",
+        "controller_ip_whitelist": [],
+        "ping_interval": 15,
+        "ping_timeout": 15
+    },
+    "client": {
+        "server_url": "ws://127.0.0.1:18765/client",
+        "token": "CHANGE_THIS_TO_YOUR_SECURE_TOKEN",
+        "hmac_secret": "CHANGE_THIS_TO_YOUR_HMAC_SECRET",
+        "reconnect_min_delay": 2,
+        "reconnect_max_delay": 120
+    }
+}

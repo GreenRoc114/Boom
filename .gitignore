@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyc
+
+# Build artifacts
+dist/
+build/
+*.spec
+temp_config.json
+_prank_release_custom.py
+
+# Binaries
+*.zip
+*.exe
+
+# Config with secrets (use config.json.example as template)
+config.json
+build_private.bat
+.env
+
+# Archive (old V2.5 files kept for reference)
+archive/

