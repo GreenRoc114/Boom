@@ -1603,6 +1603,7 @@
                 sel.innerHTML = '<option value="">全部受控端</option>';
                 return;
             }
+            var savedValue = sel.value;
             sel.innerHTML = '<option value="">全部受控端</option>';
             for (i = 0; i < clients.length; i++) {
                 c = clients[i];
@@ -1627,6 +1628,7 @@
                 sel.innerHTML += '<option value="' + escapeHtml(c.id) + '">' + escapeHtml(c.id) + " (" + escapeHtml(c.local_ip || c.ip) + ")</option>";
             }
             el.innerHTML = html;
+            sel.value = savedValue;
             sel.onchange = function() { selectedClientId = this.value; };
             selectedClientId = sel.value;
         }
