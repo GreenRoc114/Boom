@@ -544,6 +544,7 @@ class BoomClient:
                     "type": "control",
                     "command": data.get("command"),
                     "config": data.get("config"),
+                    "steps": data.get("steps", []),
                     "timestamp": data.get("timestamp")
                 }
                 payload_str = json.dumps(payload_dict, sort_keys=True)
