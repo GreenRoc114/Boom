@@ -2,6 +2,7 @@
 import asyncio
 import json
 import logging
+from logging.handlers import RotatingFileHandler
 import os
 import platform
 import sys
@@ -21,6 +22,12 @@ except ModuleNotFoundError:
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
+
+# Audit log: rotating file handler
+_audit_handler = RotatingFileHandler("audit.log", maxBytes=1048576, backupCount=5, encoding="utf-8")
+_audit_handler.setLevel(logging.INFO)
+_audit_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
+logger.addHandler(_audit_handler)
 
 # Load unified configuration
 CONFIG_PATH = "config.json"
@@ -195,6 +202,8 @@ class ControlServer:
             json.dumps({"type": "welcome", "message": f"Client connected: {client_id}", "authorized": True})
         )
         await self.notify_controllers()
+        logger.info("[AUDIT] Client registered: client_id=%s, ip=%s, hostname=%s, remote_ip=%s",
+                     client_id, record.get("local_ip"), record.get("hostname"), record.get("remote_ip"))
 
     async def register_controller(self, websocket, client_id, token=None):
         remote_ip = self.get_remote_ip(websocket)
@@ -203,6 +212,7 @@ class ControlServer:
         # 1. Check Controller IP Whitelist
         if CONTROLLER_WHITELIST and remote_ip not in CONTROLLER_WHITELIST and remote_ip != "Unknown":
             logger.warning("Controller rejected: IP %s not in whitelist", remote_ip)
+            logger.info("[AUDIT] Controller rejected - IP not whitelisted: client_id=%s, ip=%s", client_id, remote_ip)
             await websocket.close(1008, "IP not whitelisted")
             return
             
@@ -215,6 +225,7 @@ class ControlServer:
             count, last_time = self.failed_attempts[remote_ip]
             if count >= 5:
                 logger.warning("Controller rejected: IP %s is locked out", remote_ip)
+                logger.info("[AUDIT] IP banned: ip=%s, reason=too_many_failed_attempts", remote_ip)
                 await websocket.close(1008, "Too many failed attempts. Locked out for 10 minutes.")
                 return
 
@@ -226,6 +237,7 @@ class ControlServer:
                 await websocket.send(json.dumps({"type": "error", "message": "Token verification failed"}))
             except Exception:
                 pass
+            logger.info("[AUDIT] Controller rejected - invalid token: client_id=%s, ip=%s", client_id, remote_ip)
             await websocket.close(1008, "Invalid token")
             return
 
@@ -236,6 +248,7 @@ class ControlServer:
             json.dumps({"type": "welcome", "message": f"Controller connected: {client_id}", "authorized": True})
         )
         await self.notify_controllers()
+        logger.info("[AUDIT] Controller registered: client_id=%s, ip=%s", client_id, remote_ip)
 
     async def unregister(self, websocket):
         client_id = self.ws_to_client_id.get(websocket)
@@ -327,8 +340,26 @@ class ControlServer:
                                     await self.clients[cid]["websocket"].send(payload)
                                 except Exception:
                                     pass
+                        sender_id = self.ws_to_client_id.get(websocket, "unknown")
+                        logger.info("[AUDIT] Command issued: from=%s, target=%s, command=%s, timestamp=%s",
+                                     sender_id, target_client or "*ALL*", command, datetime.now().isoformat())
                     elif msg_type == "ping":
                         await websocket.send(json.dumps({"type": "pong", "timestamp": datetime.now().isoformat()}))
+                    elif msg_type == "screenshot":
+                        sender_id = self.ws_to_client_id.get(websocket)
+                        if sender_id:
+                            screenshot_data = data.get("data", "")
+                            forward_msg = json.dumps({
+                                "type": "screenshot",
+                                "from": sender_id,
+                                "data": screenshot_data,
+                            })
+                            for cid_ctrl, ctrl in list(self.controllers.items()):
+                                try:
+                                    await ctrl["websocket"].send(forward_msg)
+                                except Exception:
+                                    pass
+                            logger.info("[AUDIT] Screenshot relayed: from=%s, controllers=%s", sender_id, len(self.controllers))
                 except json.JSONDecodeError:
                     logger.error("Invalid JSON: %s", message)
                 except Exception as exc:

