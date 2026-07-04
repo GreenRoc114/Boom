@@ -387,7 +387,7 @@ class ControlServer:
                         await websocket.send(json.dumps(await self.build_server_status()))
                     elif msg_type == "control":
                         command = data.get("command")
-                        target_client = data.get("target_client")
+                        target_client = data.get("target")
                         config = data.get("config")
                         
                         payload_dict = {
