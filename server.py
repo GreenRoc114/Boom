@@ -58,6 +58,8 @@ class ControlServer:
         self.controllers = {}
         self.ws_to_client_id = {}
         self.failed_attempts = {}  # ip -> (count, timestamp)
+        self.connection_times = {}  # ip -> [list of connection timestamps]
+        self.pending_ping = {}  # client_id -> timestamp when app-level ping was sent
 
     def get_remote_ip(self, websocket):
         try:
@@ -226,6 +228,7 @@ class ControlServer:
             if count >= 5:
                 logger.warning("Controller rejected: IP %s is locked out", remote_ip)
                 logger.info("[AUDIT] IP banned: ip=%s, reason=too_many_failed_attempts", remote_ip)
+                await self.notify_controllers({"type": "alert", "alert_type": "ip_banned", "ip": remote_ip, "reason": "too_many_failed_attempts"})
                 await websocket.close(1008, "Too many failed attempts. Locked out for 10 minutes.")
                 return
 
@@ -256,7 +259,9 @@ class ControlServer:
             return
 
         if client_id in self.clients:
+            await self.notify_controllers({"type": "client_offline", "client_id": client_id})
             del self.clients[client_id]
+            self.pending_ping.pop(client_id, None)
             logger.info("Client disconnected: %s (online=%s)", client_id, len(self.clients))
             await self.notify_controllers()
         elif client_id in self.controllers:
@@ -265,7 +270,15 @@ class ControlServer:
 
         del self.ws_to_client_id[websocket]
 
-    async def notify_controllers(self):
+    async def notify_controllers(self, message_dict=None):
+        if message_dict is not None:
+            msg = json.dumps(message_dict)
+            for cid_ctrl, ctrl in list(self.controllers.items()):
+                try:
+                    await ctrl["websocket"].send(msg)
+                except Exception as exc:
+                    logger.error("[notify] failed to send to %s: %s", cid_ctrl, exc)
+            return
         clients_list = [self.public_client_info(cid, info) for cid, info in self.clients.items()]
         msg = json.dumps({"type": "clients_list", "clients": clients_list})
         logger.info("[notify] clients=%s, controllers=%s", len(clients_list), len(self.controllers))
@@ -276,6 +289,45 @@ class ControlServer:
             except Exception as exc:
                 logger.error("[notify] failed to send to %s: %s", cid_ctrl, exc)
 
+    async def watchdog_loop(self):
+        """Background task: check client liveness every 15 seconds."""
+        while True:
+            await asyncio.sleep(15)
+            try:
+                now_dt = datetime.now()
+                now_epoch = time.time()
+                for client_id, info in list(self.clients.items()):
+                    try:
+                        last_seen = datetime.fromisoformat(info["last_seen"])
+                        elapsed = (now_dt - last_seen).total_seconds()
+                        if elapsed > 45:
+                            if client_id in self.pending_ping:
+                                ping_time = self.pending_ping[client_id]
+                                if now_epoch - ping_time >= 15:
+                                    logger.warning("Watchdog: client %s timed out (no response to ping)", client_id)
+                                    logger.info("[AUDIT] Client offline: client_id=%s, reason=ping_timeout", client_id)
+                                    try:
+                                        await info["websocket"].close(1008, "Ping timeout")
+                                    except Exception:
+                                        pass
+                                    await self.unregister(info["websocket"])
+                            else:
+                                try:
+                                    await info["websocket"].send(json.dumps({"type": "ping"}))
+                                    self.pending_ping[client_id] = now_epoch
+                                    logger.info("Watchdog: sent ping to %s", client_id)
+                                except Exception as exc:
+                                    logger.warning("Watchdog: failed to ping %s: %s", client_id, exc)
+                                    try:
+                                        await info["websocket"].close(1008, "Ping failed")
+                                    except Exception:
+                                        pass
+                                    await self.unregister(info["websocket"])
+                    except Exception as exc:
+                        logger.error("Watchdog: error processing client %s: %s", client_id, exc)
+            except Exception as exc:
+                logger.error("Watchdog loop error: %s", exc)
+
     async def handle_connection(self, websocket, path=None):
         client_id = None
         try:
@@ -284,6 +336,24 @@ class ControlServer:
             except Exception:
                 path = "/"
             logger.info("New connection: %s", path)
+
+            # 1a. Connection storm protection
+            remote_ip = self.get_remote_ip(websocket)
+            now_ts = time.time()
+            # Clean records >1s old
+            if remote_ip in self.connection_times:
+                self.connection_times[remote_ip] = [t for t in self.connection_times[remote_ip] if now_ts - t <= 1.0]
+            else:
+                self.connection_times[remote_ip] = []
+            self.connection_times[remote_ip].append(now_ts)
+            if len(self.connection_times[remote_ip]) > 20:
+                logger.warning("Connection storm detected from %s", remote_ip)
+                logger.info("[AUDIT] IP banned: ip=%s, reason=connection_storm", remote_ip)
+                count, _ = self.failed_attempts.get(remote_ip, (0, 0))
+                self.failed_attempts[remote_ip] = (count + 1, now_ts)
+                await self.notify_controllers({"type": "alert", "alert_type": "ip_banned", "ip": remote_ip, "reason": "connection_storm"})
+                await websocket.close(1008, "Connection too frequent")
+                return
 
             async for message in websocket:
                 try:
@@ -302,9 +372,15 @@ class ControlServer:
                         client_id = self.ws_to_client_id.get(websocket, client_id)
                         if client_id in self.clients:
                             self.clients[client_id]["last_seen"] = datetime.now().isoformat()
+                            self.pending_ping.pop(client_id, None)
                             for key in ("stage", "screen", "background"):
                                 if data.get(key) is not None:
                                     self.clients[client_id][key] = data.get(key)
+                    elif msg_type == "pong":
+                        client_id = self.ws_to_client_id.get(websocket, client_id)
+                        if client_id in self.clients:
+                            self.clients[client_id]["last_seen"] = datetime.now().isoformat()
+                            self.pending_ping.pop(client_id, None)
                     elif msg_type == "list_clients":
                         await self.notify_controllers()
                     elif msg_type == "server_status":
@@ -444,6 +520,7 @@ class ControlServer:
         return None
 
     async def run(self):
+        asyncio.create_task(self.watchdog_loop())
         async with websockets.serve(
             self.handle_connection,
             HOST,

