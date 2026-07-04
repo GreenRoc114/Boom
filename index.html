@@ -671,6 +671,110 @@
             background: linear-gradient(135deg, #0d7377, #14919b);
             color: #fff;
         }
+
+        /* ===== 宏构建器 ===== */
+        .macro-builder-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .macro-builder-row select { flex: 2; min-width: 160px; }
+        .macro-builder-row input[type="number"] { flex: 1; min-width: 90px; }
+        .macro-builder-row .btn { flex-shrink: 0; }
+
+        .macro-list {
+            background: var(--md-sys-color-surface-1);
+            border: 1px solid var(--md-sys-color-outline-variant);
+            border-radius: 16px;
+            padding: 8px;
+            margin-bottom: 16px;
+            max-height: 320px;
+            overflow-y: auto;
+        }
+        .macro-step {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 14px;
+            border-radius: 12px;
+            margin-bottom: 4px;
+            transition: background 0.15s;
+            gap: 10px;
+        }
+        .macro-step:last-child { margin-bottom: 0; }
+        .macro-step:hover { background: var(--md-sys-color-surface-variant); }
+        .macro-step-info {
+            font-size: 14px;
+            color: var(--md-sys-color-on-surface);
+            word-break: break-word;
+        }
+        .macro-step-wait {
+            font-size: 12px;
+            color: var(--md-sys-color-on-surface-variant);
+            margin-left: 6px;
+        }
+        .macro-step-delete {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: none;
+            background: transparent;
+            color: var(--md-sys-color-error);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            line-height: 1;
+            transition: background 0.15s;
+            flex-shrink: 0;
+            padding-bottom: 2px;
+        }
+        .macro-step-delete:hover { background: var(--md-sys-color-error-container); }
+
+        .macro-actions {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        .macro-actions .btn { flex: 1; min-width: 120px; }
+
+        .macro-save-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .macro-save-row input[type="text"] { flex: 2; min-width: 120px; }
+        .macro-save-row select { flex: 2; min-width: 140px; }
+        .macro-save-row .btn { flex-shrink: 0; }
+
+        .macro-schedule {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: flex-end;
+            padding-top: 12px;
+            border-top: 1px solid var(--md-sys-color-outline-variant);
+        }
+        .macro-schedule .form-label { width: 100%; margin-bottom: 0; }
+        .macro-schedule input[type="datetime-local"] {
+            flex: 2;
+            min-width: 180px;
+            color-scheme: dark;
+        }
+        .macro-schedule .btn { flex-shrink: 0; }
+
+        @media (max-width: 720px) {
+            .macro-builder-row, .macro-save-row, .macro-schedule { flex-direction: column; }
+            .macro-builder-row > *, .macro-save-row > *, .macro-schedule > * { width: 100%; }
+            .macro-actions { flex-direction: column; }
+            .macro-actions .btn { width: 100%; }
+        }
     </style>
 </head>
 <body>
@@ -830,6 +934,7 @@
                         <button class="tab-btn" data-tab="tab-screen">屏幕特效</button>
                         <button class="tab-btn" data-tab="tab-physical">物理干扰</button>
                         <button class="tab-btn" data-tab="tab-monitor">监控与安全</button>
+                        <button class="tab-btn" data-tab="tab-macro">宏命令</button>
                     </div>
 
                     <!-- 视觉弹窗 -->
@@ -842,6 +947,7 @@
                                     <button class="btn btn-filled-tonal" onclick="sendCommand('stage_2')">连击弹窗</button>
                                     <button class="btn btn-error-filled" onclick="sendCommand('stage_force')">强制封锁通告</button>
                                     <button class="btn btn-error-filled" onclick="sendCommand('prank_infinite_window')">窗口无限繁殖</button>
+                                    <button class="btn btn-error-filled" onclick="sendCommand('prank_avalanche')">弹窗雪崩</button>
                                 </div>
                             </div>
                         </div>
@@ -857,6 +963,8 @@
                                     <button class="btn btn-error" onclick="sendCommand('stage_4')">勒索锁屏</button>
                                     <button class="btn btn-outlined" onclick="sendCommand('prank_fake_update')">假系统更新</button>
                                     <button class="btn btn-outlined" onclick="sendCommand('prank_fake_notify')">假系统通知</button>
+                                    <button class="btn btn-outlined" onclick="sendCommand('prank_watermark')">虚假水印</button>
+                                    <button class="btn btn-outlined" onclick="sendCommand('prank_livestream')">假直播角标</button>
                                 </div>
                             </div>
                         </div>
@@ -885,6 +993,10 @@
                                     <button class="btn btn-outlined" onclick="sendCommand('prank_desktop')">桌面窗口打乱</button>
                                     <button class="btn btn-outlined" onclick="sendCommand('prank_ghost_typing')">幽灵打字机</button>
                                     <button class="btn btn-filled-tonal" onclick="sendCommand('prank_rickroll')">瑞克摇</button>
+                                    <button class="btn btn-filled-tonal" onclick="sendCommand('prank_drunk_mouse')">叛逆的鼠标</button>
+                                    <button class="btn btn-error-filled" onclick="sendCommand('prank_earthquake')">地震模式</button>
+                                    <button class="btn btn-outlined" onclick="sendCommand('prank_mirror_typing')">反向打字</button>
+                                    <button class="btn btn-outlined" onclick="sendCommand('prank_window_exile')">窗口漂移</button>
                                 </div>
                             </div>
                         </div>
@@ -898,6 +1010,70 @@
                                 <div class="button-grid" style="grid-template-columns:1fr;">
                                     <button class="btn btn-screenshot" onclick="sendScreenshot()">查看屏幕截图</button>
                                     <button class="btn btn-error-filled" onclick="sendCommand('exit')">一键清除恢复</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 宏命令 -->
+                    <div class="tab-panel control-section" id="tab-macro">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="section-title">宏序列编辑器</div>
+
+                                <div class="macro-builder-row">
+                                    <select class="input" id="macroCmdSelect">
+                                        <option value="">选择命令...</option>
+                                        <option value="stage_1">stage_1 / 单窗警告</option>
+                                        <option value="stage_2">stage_2 / 连击弹窗</option>
+                                        <option value="stage_3">stage_3 / 蓝屏</option>
+                                        <option value="stage_4">stage_4 / 勒索</option>
+                                        <option value="stage_force">stage_force / 强制全屏</option>
+                                        <option value="prank_desktop">prank_desktop / 窗口打乱</option>
+                                        <option value="prank_flip_screen">prank_flip_screen / 翻转屏幕</option>
+                                        <option value="prank_negative">prank_negative / 负片世界</option>
+                                        <option value="prank_fake_update">prank_fake_update / 假更新</option>
+                                        <option value="prank_glitch">prank_glitch / 故障艺术</option>
+                                        <option value="prank_infinite_window">prank_infinite_window / 窗口繁殖</option>
+                                        <option value="prank_ghost_typing">prank_ghost_typing / 幽灵打字</option>
+                                        <option value="prank_rickroll">prank_rickroll / 瑞克摇</option>
+                                        <option value="prank_fake_notify">prank_fake_notify / 假通知</option>
+                                        <option value="prank_drunk_mouse">prank_drunk_mouse / 叛逆鼠标</option>
+                                        <option value="prank_earthquake">prank_earthquake / 地震</option>
+                                        <option value="prank_watermark">prank_watermark / 水印</option>
+                                        <option value="prank_livestream">prank_livestream / 假直播</option>
+                                        <option value="prank_mirror_typing">prank_mirror_typing / 反向打字</option>
+                                        <option value="prank_window_exile">prank_window_exile / 窗口漂移</option>
+                                        <option value="prank_avalanche">prank_avalanche / 弹窗雪崩</option>
+                                        <option value="exit">exit / 关闭恢复</option>
+                                    </select>
+                                    <input class="input" type="number" id="macroDelayInput" min="0" step="1" value="0" placeholder="延迟(秒)">
+                                    <button class="btn btn-filled" onclick="addMacroStep()">添加</button>
+                                </div>
+
+                                <div class="macro-list" id="macroList">
+                                    <div class="empty-note">暂无步骤，请添加命令</div>
+                                </div>
+
+                                <div class="macro-actions">
+                                    <button class="btn btn-outlined" onclick="clearMacro()">清空序列</button>
+                                    <button class="btn btn-filled" onclick="sendMacro()">执行宏</button>
+                                </div>
+
+                                <div class="macro-save-row">
+                                    <input class="input" type="text" id="macroNameInput" placeholder="宏名称">
+                                    <button class="btn btn-filled-tonal" onclick="saveMacro()">保存</button>
+                                    <select class="input" id="macroLoadSelect">
+                                        <option value="">加载已保存的宏...</option>
+                                    </select>
+                                    <button class="btn btn-outlined" onclick="loadMacro()">加载</button>
+                                    <button class="btn btn-text" onclick="deleteSavedMacro()">删除</button>
+                                </div>
+
+                                <div class="macro-schedule">
+                                    <label class="form-label">定时执行（到设定时间自动发送）</label>
+                                    <input class="input" type="datetime-local" id="macroScheduleTime">
+                                    <button class="btn btn-outlined" onclick="scheduleMacro()">设定定时执行</button>
                                 </div>
                             </div>
                         </div>
@@ -1148,6 +1324,7 @@
                     if (targetPanel) targetPanel.classList.add("active");
                 });
             });
+            updateMacroLoadSelect();
         });
 
         /* ================================================================
@@ -1159,6 +1336,8 @@
         var serverUrl = "";
         var clients = [];
         var selectedClientId = "";
+        var macroSteps = [];
+        var macroScheduleTimer = null;
 
         function $(id) { return document.getElementById(id); }
 
@@ -1448,6 +1627,8 @@
                 sel.innerHTML += '<option value="' + escapeHtml(c.id) + '">' + escapeHtml(c.id) + " (" + escapeHtml(c.local_ip || c.ip) + ")</option>";
             }
             el.innerHTML = html;
+            sel.onchange = function() { selectedClientId = this.value; };
+            selectedClientId = sel.value;
         }
 
         function startPoll() {
@@ -1482,6 +1663,13 @@
                 prank_rickroll: "瑞克摇",
                 prank_fake_notify: "假系统通知",
                 prank_negative: "负片世界",
+                prank_avalanche: "弹窗雪崩",
+                prank_watermark: "虚假水印",
+                prank_livestream: "假直播角标",
+                prank_drunk_mouse: "叛逆的鼠标",
+                prank_earthquake: "地震模式",
+                prank_mirror_typing: "反向打字",
+                prank_window_exile: "窗口漂移",
                 exit: "一键清除恢复"
             };
             ws.send(JSON.stringify({type: "control", command: cmd, target: target || null}));
@@ -1507,6 +1695,151 @@
             var target = $("targetSelect").value;
             ws.send(JSON.stringify({type: "control", command: null, target: target || null, config: config}));
             showMsg("配置已下发");
+        }
+
+        /* ================================================================
+           宏命令构建器
+           ================================================================ */
+        function getCmdName(cmd) {
+            var names = {
+                stage_1: "单窗警告",
+                stage_2: "连击弹窗",
+                stage_3: "蓝屏死机",
+                stage_4: "勒索锁屏",
+                stage_force: "强制封锁通告",
+                prank_desktop: "桌面窗口打乱",
+                prank_flip_screen: "翻转屏幕",
+                prank_fake_update: "假系统更新",
+                prank_glitch: "屏幕故障艺术",
+                prank_infinite_window: "窗口无限繁殖",
+                prank_ghost_typing: "幽灵打字机",
+                prank_rickroll: "瑞克摇",
+                prank_fake_notify: "假系统通知",
+                prank_negative: "负片世界",
+                prank_avalanche: "弹窗雪崩",
+                prank_watermark: "虚假水印",
+                prank_livestream: "假直播角标",
+                prank_drunk_mouse: "叛逆的鼠标",
+                prank_earthquake: "地震模式",
+                prank_mirror_typing: "反向打字",
+                prank_window_exile: "窗口漂移",
+                exit: "一键清除恢复"
+            };
+            return names[cmd] || cmd;
+        }
+
+        function renderMacroList() {
+            var el = $("macroList");
+            if (macroSteps.length === 0) {
+                el.innerHTML = '<div class="empty-note">暂无步骤，请添加命令</div>';
+                return;
+            }
+            var html = '';
+            for (var i = 0; i < macroSteps.length; i++) {
+                var step = macroSteps[i];
+                var name = getCmdName(step.cmd);
+                html += '<div class="macro-step">';
+                html += '<div class="macro-step-info">' + (i + 1) + '. ' + escapeHtml(name);
+                if (step.delay > 0) {
+                    html += '<span class="macro-step-wait">(等待' + step.delay + '秒)</span>';
+                } else {
+                    html += '<span class="macro-step-wait">(立即)</span>';
+                }
+                html += '</div>';
+                html += '<button class="macro-step-delete" onclick="removeMacroStep(' + i + ')" title="删除">×</button>';
+                html += '</div>';
+            }
+            el.innerHTML = html;
+        }
+
+        function addMacroStep() {
+            var cmd = $("macroCmdSelect").value;
+            var delay = parseInt($("macroDelayInput").value, 10) || 0;
+            if (!cmd) { showMsg("请先选择一个命令", true); return; }
+            macroSteps.push({cmd: cmd, delay: delay});
+            renderMacroList();
+            showMsg("已添加：" + getCmdName(cmd));
+        }
+
+        function removeMacroStep(index) {
+            macroSteps.splice(index, 1);
+            renderMacroList();
+        }
+
+        function clearMacro() {
+            macroSteps = [];
+            renderMacroList();
+            showMsg("序列已清空");
+        }
+
+        function sendMacro() {
+            if (!selectedClientId) { alert('请先选择一个客户端'); return; }
+            if (macroSteps.length === 0) { alert('请先添加至少一个步骤'); return; }
+            if (!ws || ws.readyState !== 1) { showMsg("未连接服务器", true); return; }
+            ws.send(JSON.stringify({type: "control", command: "macro", steps: macroSteps, target: selectedClientId}));
+            showMsg('宏命令已发送（' + macroSteps.length + '步）');
+        }
+
+        function saveMacro() {
+            var name = $("macroNameInput").value.trim();
+            if (!name) { alert('请输入宏名称'); return; }
+            var macros = JSON.parse(localStorage.getItem('boom_macros') || '{}');
+            macros[name] = JSON.parse(JSON.stringify(macroSteps));
+            localStorage.setItem('boom_macros', JSON.stringify(macros));
+            updateMacroLoadSelect();
+            $("macroNameInput").value = '';
+            showMsg('宏 "' + escapeHtml(name) + '" 已保存');
+        }
+
+        function loadMacro() {
+            var name = $("macroLoadSelect").value;
+            if (!name) { showMsg("请先选择要加载的宏", true); return; }
+            var macros = JSON.parse(localStorage.getItem('boom_macros') || '{}');
+            if (macros[name]) {
+                macroSteps = JSON.parse(JSON.stringify(macros[name]));
+                renderMacroList();
+                showMsg('已加载宏 "' + escapeHtml(name) + '"');
+            } else {
+                showMsg("宏不存在", true);
+            }
+        }
+
+        function deleteSavedMacro() {
+            var name = $("macroLoadSelect").value;
+            if (!name) { showMsg("请先选择要删除的宏", true); return; }
+            var macros = JSON.parse(localStorage.getItem('boom_macros') || '{}');
+            delete macros[name];
+            localStorage.setItem('boom_macros', JSON.stringify(macros));
+            updateMacroLoadSelect();
+            showMsg('宏 "' + escapeHtml(name) + '" 已删除');
+        }
+
+        function updateMacroLoadSelect() {
+            var sel = $("macroLoadSelect");
+            var macros = JSON.parse(localStorage.getItem('boom_macros') || '{}');
+            var html = '<option value="">加载已保存的宏...</option>';
+            for (var name in macros) {
+                if (macros.hasOwnProperty(name)) {
+                    html += '<option value="' + escapeHtml(name) + '">' + escapeHtml(name) + ' (' + macros[name].length + '步)</option>';
+                }
+            }
+            sel.innerHTML = html;
+        }
+
+        function scheduleMacro() {
+            var timeVal = $("macroScheduleTime").value;
+            if (!timeVal) { alert('请选择执行时间'); return; }
+            var target = new Date(timeVal).getTime();
+            var now = Date.now();
+            if (target <= now) { alert('执行时间必须在未来'); return; }
+            if (macroSteps.length === 0) { alert('请先添加至少一个步骤'); return; }
+            if (macroScheduleTimer) clearTimeout(macroScheduleTimer);
+            macroScheduleTimer = setTimeout(function() {
+                sendMacro();
+                macroScheduleTimer = null;
+                $("macroScheduleTime").value = "";
+            }, target - now);
+            showMsg('已设定定时执行：' + new Date(target).toLocaleString('zh-CN'));
         }
 
         $("tokenInput").onkeyup = function(e) {

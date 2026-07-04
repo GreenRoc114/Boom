@@ -394,6 +394,7 @@ class ControlServer:
                             "type": "control",
                             "command": command,
                             "config": config,
+                            "steps": data.get("steps", []),
                             "timestamp": datetime.now().isoformat(),
                         }
                         
