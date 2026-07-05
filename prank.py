@@ -9,6 +9,14 @@ Environment variables:
   BOOM_AUTH_TOKEN   - Auth token matching the server (default: change-me)
 """
 import os
+import ctypes
+try:
+    ctypes.windll.shcore.SetProcessDpiAwareness(2)
+except Exception:
+    try:
+        ctypes.windll.user32.SetProcessDPIAware()
+    except Exception:
+        pass
 import tkinter as tk
 import random
 import threading
