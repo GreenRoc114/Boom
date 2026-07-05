@@ -470,10 +470,11 @@ class BoomClient:
             
             # Create a borderless window mimicking a Windows 10/11 notification
             notify = tk.Toplevel(self.root)
-            nw, nh = 360, 100
-            nx = self.screen_width - nw - 20
+            nw = max(300, int(self.screen_width * 0.19))
+            nh = max(80, int(self.screen_height * 0.09))
+            nx = self.screen_width - nw - int(self.screen_width * 0.01)
             # Stack upwards from bottom-right, each notification higher
-            ny = self.screen_height - nh - 60 - (self._notify_count - 1) * (nh + 10)
+            ny = self.screen_height - nh - int(self.screen_height * 0.05) - (self._notify_count - 1) * (nh + int(self.screen_height * 0.01))
             
             notify.geometry(f"{nw}x{nh}+{nx}+{ny}")
             notify.overrideredirect(True)
@@ -482,8 +483,8 @@ class BoomClient:
             
             title, text = random.choice(messages)
             
-            tk.Label(notify, text=title, font=("Segoe UI", 12, "bold"), fg="white", bg="#1f1f1f", anchor="w").place(x=15, y=10)
-            tk.Label(notify, text=text, font=("Segoe UI", 10), fg="#cccccc", bg="#1f1f1f", anchor="w", wraplength=330).place(x=15, y=40)
+            tk.Label(notify, text=title, font=("Segoe UI", 12, "bold"), fg="white", bg="#1f1f1f", anchor="w").place(relx=0.04, rely=0.10, anchor="w")
+            tk.Label(notify, text=text, font=("Segoe UI", 10), fg="#cccccc", bg="#1f1f1f", anchor="w", wraplength=int(nw * 0.92)).place(relx=0.04, rely=0.40, anchor="w")
             
             def slide_in():
                 for i in range(20, -1, -2):
@@ -733,13 +734,13 @@ class BoomClient:
             bsod.protocol("WM_DELETE_WINDOW", lambda: None)
             frame = tk.Frame(bsod, bg="#0078d7")
             frame.pack(fill=tk.BOTH, expand=True)
-            tk.Label(frame, text=":(", font=("Segoe UI", 80), fg="white", bg="#0078d7", anchor="w").place(x=50, y=80)
-            tk.Label(frame, text="Your PC ran into a problem and needs to restart.", font=("Segoe UI", 18), fg="white", bg="#0078d7", anchor="w").place(x=50, y=220)
-            tk.Label(frame, text="We're just collecting some error info, then we'll restart for you.", font=("Segoe UI", 14), fg="white", bg="#0078d7", anchor="w").place(x=50, y=260)
-            tk.Label(frame, textvariable=self.progress_var, font=("Segoe UI", 14), fg="white", bg="#0078d7", anchor="w").place(x=50, y=310)
-            tk.Label(frame, text="For more information about this issue:", font=("Segoe UI", 12), fg="white", bg="#0078d7", anchor="w").place(x=50, y=400)
-            tk.Label(frame, text="windows.com/stopcode", font=("Segoe UI", 12, "underline"), fg="white", bg="#0078d7", anchor="w").place(x=50, y=425)
-            tk.Label(frame, text="Stop code: SYSTEM_SERVICE_EXCEPTION", font=("Segoe UI", 12), fg="white", bg="#0078d7", anchor="w").place(x=50, y=470)
+            tk.Label(frame, text=":(", font=("Segoe UI", 80), fg="white", bg="#0078d7", anchor="w").place(relx=0.04, rely=0.08, anchor="w")
+            tk.Label(frame, text="Your PC ran into a problem and needs to restart.", font=("Segoe UI", 18), fg="white", bg="#0078d7", anchor="w").place(relx=0.04, rely=0.22, anchor="w")
+            tk.Label(frame, text="We're just collecting some error info, then we'll restart for you.", font=("Segoe UI", 14), fg="white", bg="#0078d7", anchor="w").place(relx=0.04, rely=0.26, anchor="w")
+            tk.Label(frame, textvariable=self.progress_var, font=("Segoe UI", 14), fg="white", bg="#0078d7", anchor="w").place(relx=0.04, rely=0.32, anchor="w")
+            tk.Label(frame, text="For more information about this issue:", font=("Segoe UI", 12), fg="white", bg="#0078d7", anchor="w").place(relx=0.04, rely=0.40, anchor="w")
+            tk.Label(frame, text="windows.com/stopcode", font=("Segoe UI", 12, "underline"), fg="white", bg="#0078d7", anchor="w").place(relx=0.04, rely=0.44, anchor="w")
+            tk.Label(frame, text="Stop code: SYSTEM_SERVICE_EXCEPTION", font=("Segoe UI", 12), fg="white", bg="#0078d7", anchor="w").place(relx=0.04, rely=0.48, anchor="w")
             def keep_top(w=bsod):
                 try:
                     w.attributes('-topmost', True)
@@ -770,17 +771,17 @@ class BoomClient:
             wc.protocol("WM_DELETE_WINDOW", lambda: None)
             frame = tk.Frame(wc, bg="#1a0000")
             frame.pack(fill=tk.BOTH, expand=True)
-            tk.Label(frame, text="🔒", font=("Arial", 80), fg="#d32f2f", bg="#1a0000").place(x=100, y=60)
-            tk.Label(frame, text="Oops, your files have been encrypted!", font=("Arial", 24, "bold"), fg="#d32f2f", bg="#1a0000").place(x=100, y=180)
-            tk.Label(frame, text="Your files have been encrypted. Pay 0.5 BTC to recover.", font=("Arial", 14), fg="white", bg="#1a0000").place(x=100, y=240)
-            tk.Label(frame, text="Payment must be made within 48 hours.", font=("Arial", 12), fg="#ff9800", bg="#1a0000").place(x=100, y=280)
-            tk.Label(frame, textvariable=countdown_var, font=("Arial", 18, "bold"), fg="#f44336", bg="#1a0000").place(x=100, y=330)
+            tk.Label(frame, text="🔒", font=("Arial", 80), fg="#d32f2f", bg="#1a0000").place(relx=0.06, rely=0.06, anchor="w")
+            tk.Label(frame, text="Oops, your files have been encrypted!", font=("Arial", 24, "bold"), fg="#d32f2f", bg="#1a0000").place(relx=0.06, rely=0.17, anchor="w")
+            tk.Label(frame, text="Your files have been encrypted. Pay 0.5 BTC to recover.", font=("Arial", 14), fg="white", bg="#1a0000").place(relx=0.06, rely=0.22, anchor="w")
+            tk.Label(frame, text="Payment must be made within 48 hours.", font=("Arial", 12), fg="#ff9800", bg="#1a0000").place(relx=0.06, rely=0.26, anchor="w")
+            tk.Label(frame, textvariable=countdown_var, font=("Arial", 18, "bold"), fg="#f44336", bg="#1a0000").place(relx=0.06, rely=0.31, anchor="w")
             wallet_box = tk.LabelFrame(frame, text="Bitcoin Wallet Address", font=("Arial", 12), fg="white", bg="#1a0000")
-            wallet_box.place(x=100, y=400, width=500, height=60)
+            wallet_box.place(relx=0.06, rely=0.37, relwidth=0.26, relheight=0.06, anchor="w")
             tk.Label(wallet_box, text="1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa", font=("Courier", 11), fg="#ffeb3b", bg="#1a0000").pack(pady=10)
-            tk.Label(frame, text="Click 'I have paid' after payment", font=("Arial", 11), fg="#aaa", bg="#1a0000").place(x=100, y=490)
-            tk.Button(frame, text="I have paid", font=("Arial", 12, "bold"), bg="#4caf50", fg="white", command=lambda: self.show_taunt()).place(x=100, y=530)
-            tk.Button(frame, text="Decrypt sample", font=("Arial", 10), bg="#607d8b", fg="white", command=lambda: None).place(x=250, y=530)
+            tk.Label(frame, text="Click 'I have paid' after payment", font=("Arial", 11), fg="#aaa", bg="#1a0000").place(relx=0.06, rely=0.46, anchor="w")
+            tk.Button(frame, text="I have paid", font=("Arial", 12, "bold"), bg="#4caf50", fg="white", command=lambda: self.show_taunt()).place(relx=0.06, rely=0.50, anchor="w")
+            tk.Button(frame, text="Decrypt sample", font=("Arial", 10), bg="#607d8b", fg="white", command=lambda: None).place(relx=0.14, rely=0.50, anchor="w")
             def keep_top(w=wc):
                 try:
                     w.attributes('-topmost', True)
@@ -826,11 +827,11 @@ class BoomClient:
             fw.protocol("WM_DELETE_WINDOW", lambda: None)
             frame = tk.Frame(fw, bg="#212121")
             frame.pack(fill=tk.BOTH, expand=True)
-            tk.Label(frame, text="⚠ Force Notice ⚠", font=("Arial", 28, "bold"), fg="#f44336", bg="#212121").place(x=mx + (mw - 400) // 2, y=80)
-            tk.Label(frame, text=f"Target: {self.target_name}", font=("Arial", 20), fg="white", bg="#212121").place(x=mx + (mw - 300) // 2, y=180)
-            tk.Label(frame, text=f"{self.target_name}, stop using the computer now.", font=("Arial", 18), fg="#ff9800", bg="#212121").place(x=mx + (mw - 400) // 2, y=260)
-            tk.Label(frame, text="Forced action will be taken immediately.", font=("Arial", 18), fg="#ff9800", bg="#212121").place(x=mx + (mw - 400) // 2, y=300)
-            tk.Label(frame, text="Please shut down and cooperate.", font=("Arial", 14), fg="#aaa", bg="#212121").place(x=mx + (mw - 360) // 2, y=380)
+            tk.Label(frame, text="⚠ Force Notice ⚠", font=("Arial", 28, "bold"), fg="#f44336", bg="#212121").place(relx=0.5, rely=0.08, anchor="center")
+            tk.Label(frame, text=f"Target: {self.target_name}", font=("Arial", 20), fg="white", bg="#212121").place(relx=0.5, rely=0.18, anchor="center")
+            tk.Label(frame, text=f"{self.target_name}, stop using the computer now.", font=("Arial", 18), fg="#ff9800", bg="#212121").place(relx=0.5, rely=0.26, anchor="center")
+            tk.Label(frame, text="Forced action will be taken immediately.", font=("Arial", 18), fg="#ff9800", bg="#212121").place(relx=0.5, rely=0.30, anchor="center")
+            tk.Label(frame, text="Please shut down and cooperate.", font=("Arial", 14), fg="#aaa", bg="#212121").place(relx=0.5, rely=0.38, anchor="center")
             def keep_top(w=fw):
                 try:
                     w.attributes('-topmost', True)
@@ -890,10 +891,10 @@ class BoomClient:
             fu = self.create_monitor_window(mx, my, mw, mh, "#005a9e")
             frame = tk.Frame(fu, bg="#005a9e")
             frame.pack(fill=tk.BOTH, expand=True)
-            tk.Label(frame, text="Updating Windows", font=("Segoe UI", 32), fg="white", bg="#005a9e").place(x=50, y=100)
-            tk.Label(frame, text="Don't turn off your computer.", font=("Segoe UI", 20), fg="white", bg="#005a9e").place(x=50, y=160)
-            tk.Label(frame, textvariable=progress_var, font=("Segoe UI", 18), fg="white", bg="#005a9e").place(x=50, y=220)
-            tk.Label(frame, text="Configuring updates... This may take a few minutes.", font=("Segoe UI", 14), fg="white", bg="#005a9e").place(x=50, y=270)
+            tk.Label(frame, text="Updating Windows", font=("Segoe UI", 32), fg="white", bg="#005a9e").place(relx=0.04, rely=0.10, anchor="w")
+            tk.Label(frame, text="Don't turn off your computer.", font=("Segoe UI", 20), fg="white", bg="#005a9e").place(relx=0.04, rely=0.16, anchor="w")
+            tk.Label(frame, textvariable=progress_var, font=("Segoe UI", 18), fg="white", bg="#005a9e").place(relx=0.04, rely=0.22, anchor="w")
+            tk.Label(frame, text="Configuring updates... This may take a few minutes.", font=("Segoe UI", 14), fg="white", bg="#005a9e").place(relx=0.04, rely=0.28, anchor="w")
             def keep_top(w=fu):
                 try:
                     w.attributes('-topmost', True)
@@ -993,35 +994,101 @@ class BoomClient:
         do_glitch()
 
     def prank_negative(self):
-        """Invert screen colors using SetDeviceGammaRamp (toggle on/off)."""
+        """Invert screen colors using Magnification API, fallback to SetDeviceGammaRamp (toggle on/off)."""
         self.root.after(0, self.update_debug, f"Stage: Extra\nNegative Mode")
         import ctypes
-        class GAMMA_RAMP(ctypes.Structure):
-            _fields_ = [("red", ctypes.c_ushort * 256),
-                        ("green", ctypes.c_ushort * 256),
-                        ("blue", ctypes.c_ushort * 256)]
+        from ctypes import wintypes
 
         if not hasattr(self, '_negative_active'):
             self._negative_active = False
 
-        ramp = GAMMA_RAMP()
         if not self._negative_active:
-            # Invert colors
-            for i in range(256):
-                ramp.red[i] = (255 - i) * 257
-                ramp.green[i] = (255 - i) * 257
-                ramp.blue[i] = (255 - i) * 257
-        else:
-            # Restore normal colors
-            for i in range(256):
-                ramp.red[i] = i * 257
-                ramp.green[i] = i * 257
-                ramp.blue[i] = i * 257
+            # 方案1: Magnification API (Windows 8+)
+            try:
+                mag = ctypes.windll.magnification
+                mag.MagInitialize()
 
-        hdc = ctypes.windll.user32.GetDC(0)
-        ctypes.windll.gdi32.SetDeviceGammaRamp(hdc, ctypes.byref(ramp))
-        ctypes.windll.user32.ReleaseDC(0, hdc)
-        self._negative_active = not self._negative_active
+                class MAGCOLOREFFECT(ctypes.Structure):
+                    _fields_ = [("transform", ctypes.c_float * 25)]
+
+                effect = MAGCOLOREFFECT()
+                # 颜色反转矩阵: RGB 取反, alpha 不变, 偏移+1 使结果落在 [0,1]
+                inv = [
+                    -1.0, 0.0, 0.0, 0.0, 0.0,
+                    0.0, -1.0, 0.0, 0.0, 0.0,
+                    0.0, 0.0, -1.0, 0.0, 0.0,
+                    0.0, 0.0, 0.0, 1.0, 0.0,
+                    1.0, 1.0, 1.0, 0.0, 1.0
+                ]
+                for i in range(25):
+                    effect.transform[i] = inv[i]
+
+                if mag.MagSetFullscreenColorEffect(ctypes.byref(effect)):
+                    self._negative_active = True
+                    self._negative_method = 'magnification'
+                    return
+                mag.MagUninitialize()
+            except Exception:
+                pass
+
+            # 方案2: SetDeviceGammaRamp (回退)
+            try:
+                class GAMMA_RAMP(ctypes.Structure):
+                    _fields_ = [("red", ctypes.c_ushort * 256),
+                                ("green", ctypes.c_ushort * 256),
+                                ("blue", ctypes.c_ushort * 256)]
+                ramp = GAMMA_RAMP()
+                for i in range(256):
+                    ramp.red[i] = (255 - i) * 257
+                    ramp.green[i] = (255 - i) * 257
+                    ramp.blue[i] = (255 - i) * 257
+                hdc = ctypes.windll.user32.GetDC(0)
+                ok = ctypes.windll.gdi32.SetDeviceGammaRamp(hdc, ctypes.byref(ramp))
+                ctypes.windll.user32.ReleaseDC(0, hdc)
+                if ok:
+                    self._negative_active = True
+                    self._negative_method = 'gamma'
+            except Exception:
+                pass
+        else:
+            # 恢复
+            method = getattr(self, '_negative_method', '')
+            if method == 'magnification':
+                try:
+                    mag = ctypes.windll.magnification
+                    class MAGCOLOREFFECT(ctypes.Structure):
+                        _fields_ = [("transform", ctypes.c_float * 25)]
+                    effect = MAGCOLOREFFECT()
+                    identity = [
+                        1.0, 0.0, 0.0, 0.0, 0.0,
+                        0.0, 1.0, 0.0, 0.0, 0.0,
+                        0.0, 0.0, 1.0, 0.0, 0.0,
+                        0.0, 0.0, 0.0, 1.0, 0.0,
+                        0.0, 0.0, 0.0, 0.0, 1.0
+                    ]
+                    for i in range(25):
+                        effect.transform[i] = identity[i]
+                    mag.MagSetFullscreenColorEffect(ctypes.byref(effect))
+                    mag.MagUninitialize()
+                except Exception:
+                    pass
+            elif method == 'gamma':
+                try:
+                    class GAMMA_RAMP(ctypes.Structure):
+                        _fields_ = [("red", ctypes.c_ushort * 256),
+                                    ("green", ctypes.c_ushort * 256),
+                                    ("blue", ctypes.c_ushort * 256)]
+                    ramp = GAMMA_RAMP()
+                    for i in range(256):
+                        ramp.red[i] = i * 257
+                        ramp.green[i] = i * 257
+                        ramp.blue[i] = i * 257
+                    hdc = ctypes.windll.user32.GetDC(0)
+                    ctypes.windll.gdi32.SetDeviceGammaRamp(hdc, ctypes.byref(ramp))
+                    ctypes.windll.user32.ReleaseDC(0, hdc)
+                except Exception:
+                    pass
+            self._negative_active = False
 
     def prank_infinite_window(self):
         self.close_all_windows()
@@ -1197,9 +1264,10 @@ class BoomClient:
         win = tk.Toplevel(self.root)
         win.overrideredirect(True)
         win.attributes('-topmost', True, '-alpha', 0.5)
-        ww, wh = 200, 60
-        wx = self.screen_width - ww - 20
-        wy = self.screen_height - wh - 40
+        ww = max(160, int(self.screen_width * 0.10))
+        wh = max(50, int(ww * 0.3))
+        wx = self.screen_width - ww - int(self.screen_width * 0.01)
+        wy = self.screen_height - wh - int(self.screen_height * 0.04)
         win.geometry(f"{ww}x{wh}+{wx}+{wy}")
         win.configure(bg="#000000")
         tk.Label(win, text="激活 Windows", font=("Microsoft YaHei", 10),
@@ -1219,9 +1287,10 @@ class BoomClient:
         win = tk.Toplevel(self.root)
         win.overrideredirect(True)
         win.attributes('-topmost', True, '-alpha', 0.95)
-        ww, wh = 220, 160
-        wx = self.screen_width - ww - 20
-        wy = 20
+        ww = max(180, int(self.screen_width * 0.12))
+        wh = max(120, int(self.screen_height * 0.15))
+        wx = self.screen_width - ww - int(self.screen_width * 0.01)
+        wy = int(self.screen_height * 0.02)
         win.geometry(f"{ww}x{wh}+{wx}+{wy}")
         win.configure(bg="#1a1a2e")
 
