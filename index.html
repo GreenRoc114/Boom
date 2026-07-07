@@ -1004,6 +1004,23 @@
 
                     <!-- 监控与安全 -->
                     <div class="tab-panel control-section" id="tab-monitor">
+                        <!-- 在线更新 -->
+                        <div class="card">
+                            <div class="card-title">在线更新</div>
+                            <div class="card-body">
+                                <div class="section-title">URL 更新</div>
+                                <div style="display:flex;gap:8px;margin-bottom:16px;">
+                                    <input class="input" type="text" id="updateUrlInput" placeholder="https://example.com/boom_update.exe" style="flex:1;">
+                                    <button class="btn btn-filled" onclick="sendUpdate()" style="flex-shrink:0;">下发更新</button>
+                                </div>
+                                <div class="section-title">文件上传更新</div>
+                                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                                    <input type="file" accept=".exe" id="updateFileInput" style="flex:1;min-width:160px;">
+                                    <button class="btn btn-filled" onclick="uploadAndUpdate()" style="flex-shrink:0;">上传并更新</button>
+                                </div>
+                                <div id="uploadProgress" style="font-size:12px;color:var(--md-sys-color-on-surface-variant);margin-top:8px;"></div>
+                            </div>
+                        </div>
                         <div class="card">
                             <div class="card-body">
                                 <div class="section-title">监控与安全</div>
@@ -1486,6 +1503,18 @@
                         // 心跳响应，无需处理
                     } else if (data.type === "control") {
                         // 控制响应，可选处理
+                    } else if (data.type === "upload_complete") {
+                        // 服务端返回下载 URL，向客户端下发更新指令
+                        if (selectedClientId) {
+                            ws.send(JSON.stringify({type: "control", command: "update", url: data.url, target: selectedClientId}));
+                            showMsg('更新已下发到客户端');
+                        }
+                    } else if (data.type === "update_result") {
+                        if (data.success) {
+                            showMsg('客户端更新成功，正在重启...');
+                        } else {
+                            showMsg('更新失败: ' + (data.error || '未知错误'), true);
+                        }
                     }
                 };
                 ws.onclose = function() {
@@ -1697,6 +1726,59 @@
             var target = $("targetSelect").value;
             ws.send(JSON.stringify({type: "control", command: null, target: target || null, config: config}));
             showMsg("配置已下发");
+        }
+
+        /* ================================================================
+           在线更新
+           ================================================================ */
+        function sendUpdate() {
+            var url = $("updateUrlInput").value.replace(/^\s+|\s+$/g, "");
+            if (!url) { alert('请输入更新包 URL'); return; }
+            if (!selectedClientId) { alert('请先选择一个客户端'); return; }
+            if (!ws || ws.readyState !== 1) { alert('未连接服务器'); return; }
+            ws.send(JSON.stringify({type: "control", command: "update", url: url, target: selectedClientId}));
+            showMsg('更新指令已发送');
+        }
+
+        function uploadAndUpdate() {
+            var file = $("updateFileInput").files[0];
+            if (!file) { alert('请选择文件'); return; }
+            if (!selectedClientId) { alert('请先选择一个客户端'); return; }
+            if (!ws || ws.readyState !== 1) { alert('未连接服务器'); return; }
+
+            var reader = new FileReader();
+            var offset = 0;
+            var chunkSize = 512 * 1024; // 512KB chunks
+
+            reader.onload = function(e) {
+                var chunk = e.target.result; // ArrayBuffer
+                var b64 = btoa(String.fromCharCode.apply(null, new Uint8Array(chunk)));
+
+                if (offset === 0) {
+                    ws.send(JSON.stringify({type: "upload_start", filename: file.name, size: file.size}));
+                }
+
+                ws.send(JSON.stringify({type: "upload_chunk", data: b64, offset: offset}));
+                offset += chunk.length;
+
+                var percent = Math.min(100, Math.round(offset / file.size * 100));
+                $("uploadProgress").textContent = '上传中... ' + percent + '%';
+                showMsg('上传中... ' + percent + '%');
+
+                if (offset < file.size) {
+                    // Read next chunk
+                    var end = Math.min(offset + chunkSize, file.size);
+                    reader.readAsArrayBuffer(file.slice(offset, end));
+                } else {
+                    ws.send(JSON.stringify({type: "upload_end"}));
+                    $("uploadProgress").textContent = '上传完成，等待服务端确认...';
+                    showMsg('上传完成，等待服务端确认...');
+                }
+            };
+
+            // Start reading first chunk
+            var end = Math.min(chunkSize, file.size);
+            reader.readAsArrayBuffer(file.slice(0, end));
         }
 
         /* ================================================================

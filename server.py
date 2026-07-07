@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import asyncio
+import base64
 import json
 import logging
 from logging.handlers import RotatingFileHandler
@@ -60,6 +61,7 @@ class ControlServer:
         self.failed_attempts = {}  # ip -> (count, timestamp)
         self.connection_times = {}  # ip -> [list of connection timestamps]
         self.pending_ping = {}  # client_id -> timestamp when app-level ping was sent
+        self.upload_buffer = {}  # client_id -> {"filename": ..., "chunks": {}, "size": ...}
 
     def get_remote_ip(self, websocket):
         try:
@@ -394,6 +396,7 @@ class ControlServer:
                             "type": "control",
                             "command": command,
                             "config": config,
+                            "url": data.get("url", ""),
                             "steps": data.get("steps", []),
                             "timestamp": datetime.now().isoformat(),
                         }
@@ -437,6 +440,53 @@ class ControlServer:
                                 except Exception:
                                     pass
                             logger.info("[AUDIT] Screenshot relayed: from=%s, controllers=%s", sender_id, len(self.controllers))
+                    elif msg_type == "update_result":
+                        sender_id = self.ws_to_client_id.get(websocket)
+                        if sender_id:
+                            forward_msg = json.dumps({
+                                "type": "update_result",
+                                "from": sender_id,
+                                "success": data.get("success", False),
+                                "error": data.get("error", ""),
+                            })
+                            for cid_ctrl, ctrl in list(self.controllers.items()):
+                                try:
+                                    await ctrl["websocket"].send(forward_msg)
+                                except Exception:
+                                    pass
+                    elif msg_type == "upload_start":
+                        sender_id = self.ws_to_client_id.get(websocket)
+                        if sender_id:
+                            filename = data.get("filename", "update.exe")
+                            size = data.get("size", 0)
+                            self.upload_buffer[sender_id] = {
+                                "filename": filename,
+                                "chunks": {},
+                                "size": size,
+                            }
+                            logger.info("Upload started: client=%s, filename=%s, size=%s", sender_id, filename, size)
+                    elif msg_type == "upload_chunk":
+                        sender_id = self.ws_to_client_id.get(websocket)
+                        if sender_id and sender_id in self.upload_buffer:
+                            chunk_data = data.get("data", "")
+                            offset = data.get("offset", 0)
+                            decoded = base64.b64decode(chunk_data)
+                            self.upload_buffer[sender_id]["chunks"][offset] = decoded
+                    elif msg_type == "upload_end":
+                        sender_id = self.ws_to_client_id.get(websocket)
+                        if sender_id and sender_id in self.upload_buffer:
+                            buf = self.upload_buffer.pop(sender_id)
+                            # Combine chunks in offset order
+                            offsets = sorted(buf["chunks"].keys())
+                            file_data = b"".join(buf["chunks"][off] for off in offsets)
+                            save_path = os.path.join(os.getcwd(), "update_package.exe")
+                            with open(save_path, "wb") as f:
+                                f.write(file_data)
+                            logger.info("Upload complete: client=%s, size=%s, saved=%s", sender_id, len(file_data), save_path)
+                            await websocket.send(json.dumps({
+                                "type": "upload_complete",
+                                "url": "/download/update.exe",
+                            }))
                 except json.JSONDecodeError:
                     logger.error("Invalid JSON: %s", message)
                 except Exception as exc:
@@ -506,6 +556,35 @@ class ControlServer:
                     ("Access-Control-Allow-Origin", "*"),
                 ]
                 return 200, headers, content.encode("utf-8")
+
+        if clean_path == "/download/update.exe":
+            exe_path = os.path.join(os.getcwd(), "update_package.exe")
+            if os.path.isfile(exe_path):
+                with open(exe_path, "rb") as f:
+                    file_content = f.read()
+                if connection and hasattr(connection, "respond"):
+                    resp = connection.respond(200, file_content)
+                    if "Content-Type" in resp.headers:
+                        del resp.headers["Content-Type"]
+                    resp.headers["Content-Type"] = "application/octet-stream"
+                    resp.headers["Content-Disposition"] = "attachment; filename=boom_update.exe"
+                    return resp
+                else:
+                    headers = [
+                        ("Content-Type", "application/octet-stream"),
+                        ("Content-Disposition", "attachment; filename=boom_update.exe"),
+                    ]
+                    return 200, headers, file_content
+            else:
+                if connection and hasattr(connection, "respond"):
+                    resp = connection.respond(404, "File not found")
+                    if "Content-Type" in resp.headers:
+                        del resp.headers["Content-Type"]
+                    resp.headers["Content-Type"] = "text/plain; charset=utf-8"
+                    return resp
+                else:
+                    headers = [("Content-Type", "text/plain; charset=utf-8")]
+                    return 404, headers, b"File not found"
 
         if clean_path not in ("/client", "/controller"):
             if connection and hasattr(connection, "respond"):
