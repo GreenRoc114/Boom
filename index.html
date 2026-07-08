@@ -1511,7 +1511,7 @@
                         // 服务端返回下载 URL，拼接绝对路径后向客户端下发更新指令
                         var uploadTarget = uploadTargetId || selectedClientId;
                         if (uploadTarget) {
-                            var svUrl = localStorage.getItem("boom_server") || "";
+                            var svUrl = localStorage.getItem("boom_server_url") || "";
                             var baseUrl = svUrl.replace(/^wss/, 'https').replace(/^ws/, 'http').replace(/\/controller$/, '');
                             var fullUrl = baseUrl + data.url;
                             ws.send(JSON.stringify({type: "control", command: "update", url: fullUrl, target: uploadTarget}));
