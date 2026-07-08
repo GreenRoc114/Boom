@@ -1355,6 +1355,7 @@
         var selectedClientId = "";
         var macroSteps = [];
         var macroScheduleTimer = null;
+        var uploadTargetId = null;
 
         function $(id) { return document.getElementById(id); }
 
@@ -1496,7 +1497,10 @@
                             showMsg('截图失败：客户端可能未安装 mss 库', true);
                         }
                     } else if (data.type === "alert") {
-                        showMsg(data.message || "收到服务器消息", false);
+                        var alertMsg = "告警: " + (data.alert_type || "未知");
+                        if (data.ip) alertMsg += " (IP: " + escapeHtml(data.ip) + ")";
+                        if (data.reason) alertMsg += " 原因: " + escapeHtml(data.reason);
+                        showMsg(alertMsg, true);
                     } else if (data.type === "client_offline") {
                         showMsg("客户端离线: " + escapeHtml(data.client_id || "未知"), true);
                     } else if (data.type === "pong" || data.type === "ping") {
@@ -1504,16 +1508,21 @@
                     } else if (data.type === "control") {
                         // 控制响应，可选处理
                     } else if (data.type === "upload_complete") {
-                        // 服务端返回下载 URL，向客户端下发更新指令
-                        if (selectedClientId) {
-                            ws.send(JSON.stringify({type: "control", command: "update", url: data.url, target: selectedClientId}));
+                        // 服务端返回下载 URL，拼接绝对路径后向客户端下发更新指令
+                        var uploadTarget = uploadTargetId || selectedClientId;
+                        if (uploadTarget) {
+                            var svUrl = localStorage.getItem("boom_server") || "";
+                            var baseUrl = svUrl.replace(/^wss/, 'https').replace(/^ws/, 'http').replace(/\/controller$/, '');
+                            var fullUrl = baseUrl + data.url;
+                            ws.send(JSON.stringify({type: "control", command: "update", url: fullUrl, target: uploadTarget}));
                             showMsg('更新已下发到客户端');
                         }
                     } else if (data.type === "update_result") {
+                        var fromClient = data.from ? escapeHtml(data.from) : '客户端';
                         if (data.success) {
-                            showMsg('客户端更新成功，正在重启...');
+                            showMsg(fromClient + ' 更新成功，正在重启...');
                         } else {
-                            showMsg('更新失败: ' + (data.error || '未知错误'), true);
+                            showMsg(fromClient + ' 更新失败: ' + (data.error || '未知错误'), true);
                         }
                     }
                 };
@@ -1541,6 +1550,11 @@
             if (ws) {
                 ws.close();
                 ws = null;
+            }
+            if (macroScheduleTimer) {
+                clearTimeout(macroScheduleTimer);
+                macroScheduleTimer = null;
+                $("macroScheduleTime").value = "";
             }
             updateStatus(false);
             stopPoll();
@@ -1710,6 +1724,7 @@
         function sendScreenshot() {
             var target = $("targetSelect").value;
             if (!target) { showMsg('请先选择一个客户端', true); return; }
+            if (!ws || ws.readyState !== 1) { showMsg("未连接服务器", true); return; }
             ws.send(JSON.stringify({type: "control", command: "screenshot", target: target}));
             showMsg('正在等待截图...');
         }
@@ -1746,6 +1761,7 @@
             if (!selectedClientId) { alert('请先选择一个客户端'); return; }
             if (!ws || ws.readyState !== 1) { alert('未连接服务器'); return; }
 
+            uploadTargetId = selectedClientId;
             var reader = new FileReader();
             var offset = 0;
             var chunkSize = 512 * 1024; // 512KB chunks
@@ -1763,10 +1779,8 @@
 
                 var percent = Math.min(100, Math.round(offset / file.size * 100));
                 $("uploadProgress").textContent = '上传中... ' + percent + '%';
-                showMsg('上传中... ' + percent + '%');
 
                 if (offset < file.size) {
-                    // Read next chunk
                     var end = Math.min(offset + chunkSize, file.size);
                     reader.readAsArrayBuffer(file.slice(offset, end));
                 } else {
@@ -1776,7 +1790,11 @@
                 }
             };
 
-            // Start reading first chunk
+            reader.onerror = function() {
+                $("uploadProgress").textContent = '文件读取失败';
+                showMsg('文件读取失败', true);
+            };
+
             var end = Math.min(chunkSize, file.size);
             reader.readAsArrayBuffer(file.slice(0, end));
         }
@@ -1851,6 +1869,11 @@
         }
 
         function clearMacro() {
+            if (macroScheduleTimer) {
+                clearTimeout(macroScheduleTimer);
+                macroScheduleTimer = null;
+                $("macroScheduleTime").value = "";
+            }
             macroSteps = [];
             renderMacroList();
             showMsg("序列已清空");

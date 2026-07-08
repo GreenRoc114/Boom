@@ -23,7 +23,6 @@ import threading
 import time
 import sys
 import webbrowser
-import ctypes
 import json
 import platform
 import socket
@@ -624,7 +623,6 @@ class BoomClient:
             "prank_mirror_typing": self.prank_mirror_typing,
             "prank_window_exile": self.prank_window_exile,
             "prank_avalanche": self.prank_avalanche,
-            "prank_update": self.prank_update,
             "screenshot": self.capture_screenshot,
             "exit": self.stop_prank,
         }
