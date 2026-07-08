@@ -1780,7 +1780,12 @@
 
             reader.onload = function(e) {
                 var chunk = e.target.result; // ArrayBuffer
-                var b64 = btoa(String.fromCharCode.apply(null, new Uint8Array(chunk)));
+                var bytes = new Uint8Array(chunk);
+                var binary = '';
+                for (var j = 0; j < bytes.length; j += 8192) {
+                    binary += String.fromCharCode.apply(null, bytes.subarray(j, j + 8192));
+                }
+                var b64 = btoa(binary);
 
                 if (offset === 0) {
                     ws.send(JSON.stringify({type: "upload_start", filename: file.name, size: file.size}));
