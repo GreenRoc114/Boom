@@ -1524,6 +1524,18 @@
                         } else {
                             showMsg(fromClient + ' 更新失败: ' + (data.error || '未知错误'), true);
                         }
+                    } else if (data.type === "update_progress") {
+                        var stageNames = {
+                            "downloading": "下载中",
+                            "verifying": "验证中",
+                            "replacing": "替换中",
+                            "restarting": "重启中"
+                        };
+                        var fromClient = data.from ? escapeHtml(data.from) : '客户端';
+                        var msg = fromClient + ' 更新' + (stageNames[data.stage] || data.stage);
+                        if (data.percent !== undefined) msg += ' ' + data.percent + '%';
+                        showMsg(msg);
+                    }
                     }
                 };
                 ws.onclose = function() {

@@ -1412,25 +1412,40 @@ class BoomClient:
             import tempfile
             import subprocess
 
-            # Download to temp file
             tmp_dir = tempfile.gettempdir()
             tmp_exe = os.path.join(tmp_dir, "boom_update.exe")
 
             self.root.after(0, self.update_debug, "Stage: Update\nDownloading...")
-            urllib.request.urlretrieve(url, tmp_exe)
 
-            # Verify download
+            def download_progress(block_num, block_size, total_size):
+                if total_size > 0:
+                    percent = min(100, int(block_num * block_size * 100 / total_size))
+                    try:
+                        self.ws.send(json.dumps({"type": "update_progress", "stage": "downloading", "percent": percent}))
+                    except Exception:
+                        pass
+
+            urllib.request.urlretrieve(url, tmp_exe, reporthook=download_progress)
+
+            try:
+                self.ws.send(json.dumps({"type": "update_progress", "stage": "verifying", "percent": 100}))
+            except Exception:
+                pass
+
             if os.path.getsize(tmp_exe) < 1024:
                 self.ws.send(json.dumps({"type": "update_result", "success": False, "error": "Downloaded file too small"}))
                 return
 
-            # Get current EXE path
             if not getattr(sys, 'frozen', False):
                 self.ws.send(json.dumps({"type": "update_result", "success": False, "error": "Not running as frozen EXE"}))
                 return
             current_exe = sys.executable
 
-            # Create update batch script
+            try:
+                self.ws.send(json.dumps({"type": "update_progress", "stage": "replacing", "percent": 100}))
+            except Exception:
+                pass
+
             bat_path = os.path.join(tmp_dir, "boom_updater.bat")
             with open(bat_path, "w") as f:
                 f.write('@echo off\n')
@@ -1440,10 +1455,13 @@ class BoomClient:
                 f.write(f'start "" "{current_exe}" --background\n')
                 f.write('del /q "%~f0"\n')
 
-            # Send success message
+            try:
+                self.ws.send(json.dumps({"type": "update_progress", "stage": "restarting", "percent": 100}))
+            except Exception:
+                pass
+
             self.ws.send(json.dumps({"type": "update_result", "success": True}))
 
-            # Execute update script and exit
             subprocess.Popen(["cmd", "/c", bat_path], creationflags=0x08000000)
             self.stop_prank()
             os._exit(0)

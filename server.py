@@ -454,6 +454,20 @@ class ControlServer:
                                     await ctrl["websocket"].send(forward_msg)
                                 except Exception:
                                     pass
+                    elif msg_type == "update_progress":
+                        sender_id = self.ws_to_client_id.get(websocket)
+                        if sender_id:
+                            forward_msg = json.dumps({
+                                "type": "update_progress",
+                                "from": sender_id,
+                                "stage": data.get("stage", ""),
+                                "percent": data.get("percent", 0),
+                            })
+                            for cid_ctrl, ctrl in list(self.controllers.items()):
+                                try:
+                                    await ctrl["websocket"].send(forward_msg)
+                                except Exception:
+                                    pass
                     elif msg_type == "upload_start":
                         sender_id = self.ws_to_client_id.get(websocket)
                         if sender_id:
