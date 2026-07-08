@@ -1365,13 +1365,7 @@
             if (cachedServer) {
                 $("serverInput").value = cachedServer;
             } else {
-                if (window.location.protocol === "https:") {
-                    $("serverInput").value = "wss://" + window.location.host + "/controller";
-                } else if (window.location.protocol === "http:") {
-                    $("serverInput").value = "ws://" + window.location.host + "/controller";
-                } else {
-                    $("serverInput").value = "wss://your-server-domain/controller";
-                }
+                $("serverInput").value = "wss://boomtangdou-production.up.railway.app/controller";
             }
             if (cachedToken) {
                 $("tokenInput").value = cachedToken;
@@ -1535,7 +1529,6 @@
                         var msg = fromClient + ' 更新' + (stageNames[data.stage] || data.stage);
                         if (data.percent !== undefined) msg += ' ' + data.percent + '%';
                         showMsg(msg);
-                    }
                     }
                 };
                 ws.onclose = function() {
