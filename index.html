@@ -1477,7 +1477,7 @@
                         updateStatus(true);
                         showMsg("已连接");
                         requestServerStatus();
-                        ws.send(JSON.stringify({type: "list_clients"}));
+                        try { ws.send(JSON.stringify({type: "list_clients"})); } catch(e) { /* 连接已断开 */ }
                         startPoll();
                     } else if (data.type === "error") {
                         showTokenError(data.message || "Token 无效");
@@ -1514,7 +1514,7 @@
                             var svUrl = localStorage.getItem("boom_server_url") || "";
                             var baseUrl = svUrl.replace(/^wss/, 'https').replace(/^ws/, 'http').replace(/\/controller$/, '');
                             var fullUrl = baseUrl + data.url;
-                            ws.send(JSON.stringify({type: "control", command: "update", url: fullUrl, target: uploadTarget}));
+                            try { ws.send(JSON.stringify({type: "control", command: "update", url: fullUrl, target: uploadTarget})); } catch(e) { /* 连接已断开 */ }
                             showMsg('更新已下发到客户端');
                         }
                     } else if (data.type === "update_result") {
@@ -1656,6 +1656,7 @@
             if (clients.length === 0) {
                 el.innerHTML = '<div class="empty-note">暂无在线客户端</div>';
                 sel.innerHTML = '<option value="">全部受控端</option>';
+                selectedClientId = "";
                 return;
             }
             var savedValue = sel.value;
@@ -1873,9 +1874,10 @@
 
         function addMacroStep() {
             var cmd = $("macroCmdSelect").value;
-            var delay = parseInt($("macroDelayInput").value, 10) || 0;
+            var delay = Math.max(0, parseInt($("macroDelayInput").value, 10) || 0);
             if (!cmd) { showMsg("请先选择一个命令", true); return; }
             macroSteps.push({cmd: cmd, delay: delay});
+            $("macroCmdSelect").value = "";
             renderMacroList();
             showMsg("已添加：" + getCmdName(cmd));
         }
@@ -1916,6 +1918,11 @@
         }
 
         function loadMacro() {
+            if (macroScheduleTimer) {
+                clearTimeout(macroScheduleTimer);
+                macroScheduleTimer = null;
+                $("macroScheduleTime").value = "";
+            }
             var name = $("macroLoadSelect").value;
             if (!name) { showMsg("请先选择要加载的宏", true); return; }
             var macros = JSON.parse(localStorage.getItem('boom_macros') || '{}');
@@ -1958,8 +1965,12 @@
             if (target <= now) { alert('执行时间必须在未来'); return; }
             if (macroSteps.length === 0) { alert('请先添加至少一个步骤'); return; }
             if (macroScheduleTimer) clearTimeout(macroScheduleTimer);
+            var snapshot = JSON.parse(JSON.stringify(macroSteps));
+            var snapshotTarget = selectedClientId;
             macroScheduleTimer = setTimeout(function() {
-                sendMacro();
+                if (!ws || ws.readyState !== 1) { showMsg("未连接服务器", true); return; }
+                ws.send(JSON.stringify({type: "control", command: "macro", steps: snapshot, target: snapshotTarget}));
+                showMsg('宏命令已发送（' + snapshot.length + '步）');
                 macroScheduleTimer = null;
                 $("macroScheduleTime").value = "";
             }, target - now);

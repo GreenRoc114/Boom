@@ -214,7 +214,7 @@ class ControlServer:
         logger.info("Controller register attempt: client_id=%s, ip=%s", client_id, remote_ip)
         
         # 1. Check Controller IP Whitelist
-        if CONTROLLER_WHITELIST and remote_ip not in CONTROLLER_WHITELIST and remote_ip != "Unknown":
+        if CONTROLLER_WHITELIST and remote_ip not in CONTROLLER_WHITELIST:
             logger.warning("Controller rejected: IP %s not in whitelist", remote_ip)
             logger.info("[AUDIT] Controller rejected - IP not whitelisted: client_id=%s, ip=%s", client_id, remote_ip)
             await websocket.close(1008, "IP not whitelisted")
@@ -247,6 +247,7 @@ class ControlServer:
             return
 
         self.controllers[client_id] = {"websocket": websocket}
+        self.failed_attempts.pop(remote_ip, None)
         self.ws_to_client_id[websocket] = client_id
         logger.info("Controller connected: %s (controllers=%s)", client_id, len(self.controllers))
         await websocket.send(
@@ -327,6 +328,15 @@ class ControlServer:
                                     await self.unregister(info["websocket"])
                     except Exception as exc:
                         logger.error("Watchdog: error processing client %s: %s", client_id, exc)
+
+                # Controller watchdog
+                for cid_ctrl, ctrl in list(self.controllers.items()):
+                    try:
+                        await ctrl["websocket"].send(json.dumps({"type": "ping"}))
+                    except Exception:
+                        logger.info("Controller %s disconnected (watchdog)", cid_ctrl)
+                        self.controllers.pop(cid_ctrl, None)
+                        self.ws_to_client_id.pop(ctrl.get("websocket"), None)
             except Exception as exc:
                 logger.error("Watchdog loop error: %s", exc)
 
@@ -388,6 +398,10 @@ class ControlServer:
                     elif msg_type == "server_status":
                         await websocket.send(json.dumps(await self.build_server_status()))
                     elif msg_type == "control":
+                        sender_id = self.ws_to_client_id.get(websocket, "")
+                        if sender_id not in self.controllers:
+                            logger.warning("Non-controller %s attempted control command", sender_id)
+                            return
                         command = data.get("command")
                         target_client = data.get("target")
                         config = data.get("config")
@@ -410,8 +424,11 @@ class ControlServer:
                         
                         if target_client:
                             if target_client in self.clients:
-                                await self.clients[target_client]["websocket"].send(payload)
-                                logger.info("Command sent to %s", target_client)
+                                try:
+                                    await self.clients[target_client]["websocket"].send(payload)
+                                    logger.info("Command sent to %s", target_client)
+                                except Exception as exc:
+                                    logger.warning("Send to %s failed: %s", target_client, exc)
                             else:
                                 logger.warning("Client %s is not online", target_client)
                         else:
@@ -420,7 +437,6 @@ class ControlServer:
                                     await self.clients[cid]["websocket"].send(payload)
                                 except Exception:
                                     pass
-                        sender_id = self.ws_to_client_id.get(websocket, "unknown")
                         logger.info("[AUDIT] Command issued: from=%s, target=%s, command=%s, timestamp=%s",
                                      sender_id, target_client or "*ALL*", command, datetime.now().isoformat())
                     elif msg_type == "ping":
@@ -433,6 +449,7 @@ class ControlServer:
                                 "type": "screenshot",
                                 "from": sender_id,
                                 "data": screenshot_data,
+                                "error": data.get("error", ""),
                             })
                             for cid_ctrl, ctrl in list(self.controllers.items()):
                                 try:
@@ -469,7 +486,10 @@ class ControlServer:
                                 except Exception:
                                     pass
                     elif msg_type == "upload_start":
-                        sender_id = self.ws_to_client_id.get(websocket)
+                        sender_id = self.ws_to_client_id.get(websocket, "")
+                        if sender_id not in self.controllers:
+                            logger.warning("Non-controller %s attempted upload_start", sender_id)
+                            return
                         if sender_id:
                             filename = data.get("filename", "update.exe")
                             size = data.get("size", 0)
@@ -480,14 +500,20 @@ class ControlServer:
                             }
                             logger.info("Upload started: client=%s, filename=%s, size=%s", sender_id, filename, size)
                     elif msg_type == "upload_chunk":
-                        sender_id = self.ws_to_client_id.get(websocket)
+                        sender_id = self.ws_to_client_id.get(websocket, "")
+                        if sender_id not in self.controllers:
+                            logger.warning("Non-controller %s attempted upload_chunk", sender_id)
+                            return
                         if sender_id and sender_id in self.upload_buffer:
                             chunk_data = data.get("data", "")
                             offset = data.get("offset", 0)
                             decoded = base64.b64decode(chunk_data)
                             self.upload_buffer[sender_id]["chunks"][offset] = decoded
                     elif msg_type == "upload_end":
-                        sender_id = self.ws_to_client_id.get(websocket)
+                        sender_id = self.ws_to_client_id.get(websocket, "")
+                        if sender_id not in self.controllers:
+                            logger.warning("Non-controller %s attempted upload_end", sender_id)
+                            return
                         if sender_id and sender_id in self.upload_buffer:
                             buf = self.upload_buffer.pop(sender_id)
                             # Combine chunks in offset order
